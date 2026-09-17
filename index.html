@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartTable - Booking & Tables</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+
+    <!-- Header & Language Switcher -->
+    <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
+            <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
+        </div>
+        <div class="flex items-center space-x-4">
+            <div class="flex bg-gray-200 rounded-lg p-1">
+                <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
+                <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
+            </div>
+            <div id="current-date-display" class="text-sm font-semibold text-gray-600"></div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left Column: Calendar & Quick Controls -->
+        <div class="space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
+                    <div class="space-x-1">
+                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                        <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
+                    </div>
+                </div>
+                <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
+                <!-- Grid Calendar -->
+                <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
+                    <span id="day-mo">Lun</span><span id="day-tu">Mar</span><span id="day-we">Mer</span><span id="day-th">Gio</span><span id="day-fr">Ven</span><span id="day-sa">Sab</span><span id="day-su">Dom</span>
+                </div>
+                <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+            </div>
+
+            <!-- Legend -->
+            <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
+                <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli / Legende Tische:</div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
+                    <span id="leg-free">Libero / Frei</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
+                    <span id="leg-partial">Parzialmente occupato / Teilweise besetzt</span>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
+                    <span id="leg-full">Completo / Voll</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right/Center Columns: Table Floor Plan & Status -->
+        <div class="lg:col-span-2 space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Tavoli</h2>
+                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per visualizzare le prenotazioni o aggiungere una nuova.</p>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia oraria:</label>
+                        <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-sm p-1.5 bg-gray-50">
+                            <option value="all">Tutta la giornata / Ganztägig</option>
+                            <option value="12:00-15:00">Pranzo (12:00 - 15:00)</option>
+                            <option value="18:00-21:00">Cena 1 (18:00 - 21:00)</option>
+                            <option value="21:00-23:30">Cena 2 (21:00 - 23:30)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tables Grid (Interactive Floor Plan) -->
+                <div id="tables-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                    <!-- Dinamicamente popolato via JS -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Gestione Tavolo / Prenotazione -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
+            <p id="modal-table-info" class="text-xs text-gray-500 mb-4">Posti: 4</p>
+
+            <!-- Lista prenotazioni esistenti per il tavolo nella data -->
+            <div class="mb-4">
+                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
+                <div id="modal-bookings-list" class="space-y-2 max-h-36 overflow-y-auto pr-1">
+                    <!-- Inserite dinamicamente -->
+                </div>
+            </div>
+
+            <hr class="my-4 border-gray-100">
+
+            <!-- Form nuova prenotazione -->
+            <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
+                <input type="hidden" id="form-table-id">
+                <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-start" class="block text-xs font-medium text-gray-600 mb-1">Dalle / Von</label>
+                        <input type="time" id="form-start-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-end" class="block text-xs font-medium text-gray-600 mb-1">Fino alle / Bis</label>
+                        <input type="time" id="form-end-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label id="lbl-name" class="block text-xs font-medium text-gray-600 mb-1">Nome / Name</label>
+                    <input type="text" id="form-name" required placeholder="Es. Rossi" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-guests" class="block text-xs font-medium text-gray-600 mb-1">Persone / Personen</label>
+                        <input type="number" id="form-guests" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
+                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Dizionario Bilingue IT / DE
+        const translations = {
+            it: {
+                title: "SmartTable Manager",
+                calendar: "Calendario",
+                floorTitle: "Pianta Tavoli",
+                floorSubtitle: "Clicca su un tavolo per gestire le prenotazioni o aggiungere slot orari.",
+                timeFilter: "Fascia oraria:",
+                allDay: "Tutta la giornata",
+                legendTitle: "Legenda Tavoli:",
+                free: "Libero",
+                partial: "Parzialmente occupato",
+                full: "Completo",
+                modalTitle: "Prenotazioni Tavolo",
+                existingTitle: "Orari già riservati per questa data:",
+                formTitle: "Aggiungi nuova prenotazione",
+                lblStart: "Dalle (Ora inizio)",
+                lblEnd: "Fino alle (Ora fine)",
+                lblName: "Nome Cliente",
+                lblGuests: "Persone",
+                lblPhone: "Telefono",
+                btnSave: "Salva Prenotazione",
+                seats: "Posti",
+                noBookings: "Nessuna prenotazione per oggi."
+            },
+            de: {
+                title: "SmartTable Manager",
+                calendar: "Kalender",
+                floorTitle: "Tischplan",
+                floorSubtitle: "Klicken Sie auf einen Tisch, um Reservierungen zu verwalten.",
+                timeFilter: "Zeitfenster:",
+                allDay: "Ganztägig",
+                legendTitle: "Tisch-Legende:",
+                free: "Frei",
+                partial: "Teilweise besetzt",
+                full: "Voll besetzt",
+                modalTitle: "Tisch-Reservierungen",
+                existingTitle: "Bereits reservierte Zeiten:",
+                formTitle: "Neue Reservierung hinzufügen",
+                lblStart: "Von (Beginn)",
+                lblEnd: "Bis (Ende)",
+                lblName: "Kundenname",
+                lblGuests: "Personen",
+                lblPhone: "Telefon",
+                btnSave: "Reservierung speichern",
+                seats: "Plätze",
+                noBookings: "Keine Reservierungen für heute."
+            }
+        };
+
+        let currentLang = 'it';
+        let currentDate = new Date();
+        
+        // Mock iniziale Tavoli (Da spostare su Supabase tabella `tables`)
+        let tables = [
+            { id: 't1', number: '1', seats: 4 },
+            { id: 't2', number: '2', seats: 2 },
+            { id: 't3', number: '3', seats: 6 },
+            { id: 't4', number: '4', seats: 4 },
+            { id: 't5', number: '5', seats: 8 },
+            { id: 't6', number: '6', seats: 2 },
+            { id: 't7', number: '7', seats: 4 },
+            { id: 't8', number: '8', seats: 4 }
+        ];
+
+        // Mock prenotazioni (Da spostare su Supabase tabella `bookings`)
+        let bookings = [
+            { id: 'b1', tableId: 't1', date: '2026-06-06', startTime: '12:00', endTime: '14:00', name: 'Müller', guests: 3, phone: '+39 333 1234567' },
+            { id: 'b2', tableId: 't1', date: '2026-06-06', startTime: '19:00', endTime: '21:00', name: 'Huber', guests: 4, phone: '+39 333 7654321' }
+        ];
+
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+            document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+            
+            // Aggiorna testi fissi
+            const t = translations[lang];
+            document.getElementById('app-title').innerText = t.title;
+            document.getElementById('calendar-title').innerText = t.calendar;
+            document.getElementById('floor-title').innerText = t.floorTitle;
+            document.getElementById('floor-subtitle').innerText = t.floorSubtitle;
+            document.getElementById('lbl-time-filter').innerText = t.timeFilter;
+            document.getElementById('legend-title').innerText = t.legendTitle;
+            document.getElementById('leg-free').innerText = t.free;
+            document.getElementById('leg-partial').innerText = t.partial;
+            document.getElementById('leg-full').innerText = t.full;
+            document.getElementById('modal-existing-title').innerText = t.existingTitle;
+            document.getElementById('modal-form-title').innerText = t.formTitle;
+            document.getElementById('lbl-start').innerText = t.lblStart;
+            document.getElementById('lbl-end').innerText = t.lblEnd;
+            document.getElementById('lbl-name').innerText = t.lblName;
+            document.getElementById('lbl-guests').innerText = t.lblGuests;
+            document.getElementById('lbl-phone').innerText = t.lblPhone;
+            document.getElementById('btn-save').innerText = t.btnSave;
+
+            renderCalendar();
+            renderTables();
+        }
+
+        function formatDateKey(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            const monthsIt = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            const monthsDe = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+            
+            document.getElementById('month-year-label').innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
+            document.getElementById('current-date-display').innerText = currentDate.toLocaleDateString(currentLang === 'it' ? 'it-IT' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
+
+            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Lunedì come primo giorno
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            const daysContainer = document.getElementById('calendar-days');
+            daysContainer.innerHTML = '';
+
+            // Spazi vuoti iniziali
+            for (let i = 0; i < firstDayIndex; i++) {
+                daysContainer.innerHTML += `<div></div>`;
+            }
+
+            // Giorni del mese
+            const selectedStr = formatDateKey(currentDate);
+            for (let d = 1; d <= totalDays; d++) {
+                const dateTest = new Date(year, month, d);
+                const dateStr = formatDateKey(dateTest);
+                const isSelected = dateStr === selectedStr;
+                
+                // Controlla se ci sono prenotazioni per questa data
+                const hasBookings = bookings.some(b => b.date === dateStr);
+
+                let btnClass = "h-9 w-9 mx-auto rounded-full flex items-center justify-center text-sm font-medium transition cursor-pointer relative ";
+                if (isSelected) {
+                    btnClass += "bg-indigo-600 text-white shadow-md";
+                } else {
+                    btnClass += "hover:bg-gray-100 text-gray-700";
+                }
+
+                daysContainer.innerHTML += `
+                    <div onclick="selectDate(${year}, ${month}, ${d})">
+                        <button class="${btnClass}">
+                            ${d}
+                            ${hasBookings && !isSelected ? '<span class="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"></span>' : ''}
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function selectDate(year, month, day) {
+            currentDate = new Date(year, month, day);
+            renderCalendar();
+            renderTables();
+        }
+
+        function changeMonth(direction) {
+            currentDate.setMonth(currentDate.getMonth() + direction);
+            renderCalendar();
+        }
+
+        function renderTables() {
+            const container = document.getElementById('tables-container');
+            container.innerHTML = '';
+            const currentDateStr = formatDateKey(currentDate);
+            const timeFilter = document.getElementById('filter-time').value;
+
+            tables.forEach(table => {
+                // Filtra prenotazioni del tavolo per la data selezionata
+                let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
+
+                // Applicazione eventuale filtro orario slot
+                if (timeFilter !== 'all') {
+                    const [fStart, fEnd] = timeFilter.split('-');
+                    tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
+                }
+
+                // Determina lo stato visivo del tavolo
+                let statusColor = "bg-emerald-50 border-emerald-200 text-emerald-800";
+                let badgeColor = "bg-emerald-500";
+                let statusText = translations[currentLang].free;
+
+                if (tableBookings.length > 0 && timeFilter === 'all') {
+                    statusColor = "bg-amber-50 border-amber-200 text-amber-900";
+                    badgeColor = "bg-amber-500";
+                    statusText = `${tableBookings.length} ${currentLang === 'it' ? 'riservazioni' : 'Reservierungen'}`;
+                } else if (tableBookings.length > 0) {
+                    statusColor = "bg-rose-50 border-rose-200 text-rose-900";
+                    badgeColor = "bg-rose-500";
+                    statusText = translations[currentLang].full;
+                }
+
+                container.innerHTML += `
+                    <div onclick="openTableModal('${table.id}')" class="border ${statusColor} rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:shadow-md transition">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <span class="text-xs uppercase tracking-wider font-bold opacity-60">Tavolo / Tisch</span>
+                                <h3 class="text-2xl font-black">${table.number}</h3>
+                            </div>
+                            <span class="w-3 h-3 ${badgeColor} rounded-full inline-block"></span>
+                        </div>
+                        <div class="mt-4">
+                            <div class="text-xs font-medium"><i class="fa-solid fa-user-group mr-1"></i> ${table.seats} ${translations[currentLang].seats}</div>
+                            <div class="text-xs mt-1 font-semibold">${statusText}</div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function openTableModal(tableId) {
+            const table = tables.find(t => t.id === tableId);
+            const currentDateStr = formatDateKey(currentDate);
+            
+            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.number}`;
+            document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
+            document.getElementById('form-table-id').value = tableId;
+
+            // Popola lista prenotazioni esistenti nel modale
+            const listContainer = document.getElementById('modal-bookings-list');
+            const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
+            
+            listContainer.innerHTML = '';
+            if (tableBookings.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[currentLang].noBookings}</p>`;
+            } else {
+                tableBookings.forEach(b => {
+                    listContainer.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2 rounded-lg text-xs">
+                            <div>
+                                <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
+                                <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
+                            </div>
+                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('booking-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
+        }
+
+        function saveBooking(event) {
+            event.preventDefault();
+            const tableId = document.getElementById('form-table-id').value;
+            const startTime = document.getElementById('form-start-time').value;
+            const endTime = document.getElementById('form-end-time').value;
+            const name = document.getElementById('form-name').value;
+            const guests = parseInt(document.getElementById('form-guests').value);
+            const phone = document.getElementById('form-phone').value;
+
+            // Inserimento locale (Da sostituire con chiamata POST a Supabase)
+            const newBooking = {
+                id: 'b_' + Date.now(),
+                tableId,
+                date: formatDateKey(currentDate),
+                startTime,
+                endTime,
+                name,
+                guests,
+                phone
+            };
+
+            bookings.push(newBooking);
+            closeModal();
+            renderTables();
+            renderCalendar();
+            document.getElementById('booking-form').reset();
+        }
+
+        function deleteBooking(bookingId) {
+            bookings = bookings.filter(b => b.id !== bookingId);
+            closeModal();
+            renderTables();
+            renderCalendar();
+        }
+
+        // Inizializzazione
+        setLanguage('it');
+    </script>
+</body>
+</html>
