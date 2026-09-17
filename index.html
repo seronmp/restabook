@@ -4,8 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartTable - Booking & Tables</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
 
@@ -141,6 +145,13 @@
     </div>
 
     <script>
+        // --- CONFIGURAZIONE SUPABASE ---
+        const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const RESTAURANT_ID = 'ristorante_1'; // Identificativo del locale (utile se gestisci più pizzerie)
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
         // Dizionario Bilingue IT / DE
         const translations = {
             it: {
@@ -194,30 +205,58 @@
         let currentLang = 'it';
         let currentDate = new Date();
         
-        // Mock iniziale Tavoli (Da spostare su Supabase tabella `tables`)
-        let tables = [
-            { id: 't1', number: '1', seats: 4 },
-            { id: 't2', number: '2', seats: 2 },
-            { id: 't3', number: '3', seats: 6 },
-            { id: 't4', number: '4', seats: 4 },
-            { id: 't5', number: '5', seats: 8 },
-            { id: 't6', number: '6', seats: 2 },
-            { id: 't7', number: '7', seats: 4 },
-            { id: 't8', number: '8', seats: 4 }
-        ];
+        let tables = [];
+        let bookings = [];
 
-        // Mock prenotazioni (Da spostare su Supabase tabella `bookings`)
-        let bookings = [
-            { id: 'b1', tableId: 't1', date: '2026-06-06', startTime: '12:00', endTime: '14:00', name: 'Müller', guests: 3, phone: '+39 333 1234567' },
-            { id: 'b2', tableId: 't1', date: '2026-06-06', startTime: '19:00', endTime: '21:00', name: 'Huber', guests: 4, phone: '+39 333 7654321' }
-        ];
+        async function initApp() {
+            setLanguage('it');
+            await loadDataFromSupabase();
+        }
+
+        // Carica dati reali da Supabase
+        async function loadDataFromSupabase() {
+            try {
+                // Carica tavoli del ristorante
+                const { data: tablesData, error: tablesError } = await supabaseClient
+                    .from('tables')
+                    .select('*')
+                    .eq('restaurant_id', RESTAURANT_ID);
+                
+                if (tablesError) throw tablesError;
+                tables = tablesData || [];
+
+                // Carica tutte le prenotazioni del ristorante
+                const { data: bookingsData, error: bookingsError } = await supabaseClient
+                    .from('bookings')
+                    .select('*')
+                    .eq('restaurant_id', RESTAURANT_ID);
+
+                if (bookingsError) throw bookingsError;
+                
+                // Mappa i campi dal database al formato JS dell'app
+                bookings = (bookingsData || []).map(b => ({
+                    id: b.id,
+                    tableId: b.table_id,
+                    date: b.date,
+                    startTime: b.start_time.substring(0, 5), // taglia i secondi (es. 12:00:00 -> 12:00)
+                    endTime: b.end_time.substring(0, 5),
+                    name: b.name,
+                    guests: b.guests,
+                    phone: b.phone
+                }));
+
+                renderCalendar();
+                renderTables();
+            } catch (err) {
+                console.error("Errore di caricamento da Supabase:", err.message);
+            }
+        }
 
         function setLanguage(lang) {
             currentLang = lang;
             document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
             document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
             
-            // Aggiorna testi fissi
             const t = translations[lang];
             document.getElementById('app-title').innerText = t.title;
             document.getElementById('calendar-title').innerText = t.calendar;
@@ -258,25 +297,21 @@
             document.getElementById('month-year-label').innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
             document.getElementById('current-date-display').innerText = currentDate.toLocaleDateString(currentLang === 'it' ? 'it-IT' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
 
-            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7; // Lunedì come primo giorno
+            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
             const totalDays = new Date(year, month + 1, 0).getDate();
 
             const daysContainer = document.getElementById('calendar-days');
             daysContainer.innerHTML = '';
 
-            // Spazi vuoti iniziali
             for (let i = 0; i < firstDayIndex; i++) {
                 daysContainer.innerHTML += `<div></div>`;
             }
 
-            // Giorni del mese
             const selectedStr = formatDateKey(currentDate);
             for (let d = 1; d <= totalDays; d++) {
                 const dateTest = new Date(year, month, d);
                 const dateStr = formatDateKey(dateTest);
                 const isSelected = dateStr === selectedStr;
-                
-                // Controlla se ci sono prenotazioni per questa data
                 const hasBookings = bookings.some(b => b.date === dateStr);
 
                 let btnClass = "h-9 w-9 mx-auto rounded-full flex items-center justify-center text-sm font-medium transition cursor-pointer relative ";
@@ -315,16 +350,13 @@
             const timeFilter = document.getElementById('filter-time').value;
 
             tables.forEach(table => {
-                // Filtra prenotazioni del tavolo per la data selezionata
                 let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
 
-                // Applicazione eventuale filtro orario slot
                 if (timeFilter !== 'all') {
                     const [fStart, fEnd] = timeFilter.split('-');
                     tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
                 }
 
-                // Determina lo stato visivo del tavolo
                 let statusColor = "bg-emerald-50 border-emerald-200 text-emerald-800";
                 let badgeColor = "bg-emerald-500";
                 let statusText = translations[currentLang].free;
@@ -344,7 +376,7 @@
                         <div class="flex justify-between items-start">
                             <div>
                                 <span class="text-xs uppercase tracking-wider font-bold opacity-60">Tavolo / Tisch</span>
-                                <h3 class="text-2xl font-black">${table.number}</h3>
+                                <h3 class="text-2xl font-black">${table.table_number}</h3>
                             </div>
                             <span class="w-3 h-3 ${badgeColor} rounded-full inline-block"></span>
                         </div>
@@ -361,11 +393,10 @@
             const table = tables.find(t => t.id === tableId);
             const currentDateStr = formatDateKey(currentDate);
             
-            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.number}`;
+            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
 
-            // Popola lista prenotazioni esistenti nel modale
             const listContainer = document.getElementById('modal-bookings-list');
             const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
             
@@ -393,7 +424,8 @@
             document.getElementById('booking-modal').classList.add('hidden');
         }
 
-        function saveBooking(event) {
+        // Salva la prenotazione direttamente su Supabase
+        async function saveBooking(event) {
             event.preventDefault();
             const tableId = document.getElementById('form-table-id').value;
             const startTime = document.getElementById('form-start-time').value;
@@ -401,35 +433,53 @@
             const name = document.getElementById('form-name').value;
             const guests = parseInt(document.getElementById('form-guests').value);
             const phone = document.getElementById('form-phone').value;
+            const dateStr = formatDateKey(currentDate);
 
-            // Inserimento locale (Da sostituire con chiamata POST a Supabase)
-            const newBooking = {
-                id: 'b_' + Date.now(),
-                tableId,
-                date: formatDateKey(currentDate),
-                startTime,
-                endTime,
-                name,
-                guests,
-                phone
+            const newBookingPayload = {
+                table_id: tableId,
+                date: dateStr,
+                start_time: startTime,
+                end_time: endTime,
+                name: name,
+                guests: guests,
+                phone: phone,
+                restaurant_id: RESTAURANT_ID
             };
 
-            bookings.push(newBooking);
+            const { data, error } = await supabaseClient
+                .from('bookings')
+                .insert([newBookingPayload])
+                .select();
+
+            if (error) {
+                alert("Errore durante il salvataggio: " + error.message);
+                return;
+            }
+
+            // Ricarica i dati aggiornati dal database
+            await loadDataFromSupabase();
             closeModal();
-            renderTables();
-            renderCalendar();
             document.getElementById('booking-form').reset();
         }
 
-        function deleteBooking(bookingId) {
-            bookings = bookings.filter(b => b.id !== bookingId);
+        // Cancella la prenotazione da Supabase
+        async function deleteBooking(bookingId) {
+            const { error } = await supabaseClient
+                .from('bookings')
+                .delete()
+                .eq('id', bookingId);
+
+            if (error) {
+                alert("Errore durante la cancellazione: " + error.message);
+                return;
+            }
+
+            await loadDataFromSupabase();
             closeModal();
-            renderTables();
-            renderCalendar();
         }
 
-        // Inizializzazione
-        setLanguage('it');
+        // Avvio applicazione all'apertura della pagina
+        initApp();
     </script>
 </body>
 </html>
