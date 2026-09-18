@@ -13,106 +13,150 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
     
-<!-- Sezione Login (visibile all'avvio se non autenticati) -->
-<div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
-    <div class="p-8 bg-white rounded-lg shadow-md w-96">
-        <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
-        <input type="email" id="login-email" placeholder="Email" class="w-full p-2 mb-4 border rounded" />
-        <input type="password" id="login-password" placeholder="Password" class="w-full p-2 mb-6 border rounded" />
-        <button onclick="eseguiLogin()" class="w-full py-2 text-white bg-blue-600 rounded hover:bg-blue-700">Accedi</button>
+    <!-- Sezione Login (visibile all'avvio se non autenticati) -->
+    <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
+        <div class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
+            <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
+            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="password" id="login-password" placeholder="Password" class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button onclick="eseguiLogin()" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
+        </div>
     </div>
-</div>
-    <!-- Header & Language Switcher -->
-    <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
-        <div class="flex items-center space-x-3">
-            <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
-            <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
-        </div>
-        <div class="flex items-center space-x-4">
-            <!-- Pulsante Modalità Modifica Sala -->
-            <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
-                <i class="fa-solid fa-arrows-up-down-left-right"></i>
-                <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
-            </button>
-            <div class="flex bg-gray-200 rounded-lg p-1">
-                <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
-                <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
+
+    <!-- CONTENITORE DELL'APP (Inizialmente nascosto finché non si effettua il login) -->
+    <div id="app-container" style="display: none;">
+
+        <!-- Header & Language Switcher -->
+        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
+                <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
             </div>
-            <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
-        </div>
-    </header>
-
-    <!-- Main Container -->
-    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-        <!-- Left Column: Calendar & Quick Controls -->
-        <div class="space-y-6 lg:col-span-1">
-            <div class="bg-white p-5 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
-                    <div class="space-x-1">
-                        <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
-                        <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
-                    </div>
+            <div class="flex items-center space-x-4">
+                <!-- Pulsante Modalità Modifica Sala -->
+                <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                    <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
+                </button>
+                <div class="flex bg-gray-200 rounded-lg p-1">
+                    <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
+                    <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
                 </div>
-                <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
-                <!-- Grid Calendar -->
-                <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
-                    <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
-                </div>
-                <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
             </div>
+        </header>
 
-            <!-- Legend -->
-            <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
-                <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
-                <div class="flex items-center space-x-2">
-                    <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
-                    <span id="leg-free">Libero / Frei</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
-                    <span id="leg-partial">Parziale / Teilweise</span>
-                </div>
-                <div class="flex items-center space-x-2">
-                    <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
-                    <span id="leg-full">Completo / Voll</span>
-                </div>
-            </div>
-        </div>
+        <!-- Main Container -->
+        <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        <!-- Right/Center Columns: Interactive Floor Plan -->
-        <div class="lg:col-span-3 space-y-6">
-            <div class="bg-white p-5 rounded-xl shadow-sm relative">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                    <div>
-                        <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
-                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
-                    </div>
-                    <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
-                        <div class="flex items-center space-x-2">
-                            <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
-                            <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
-                                <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
-                                <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
-                                <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
-                                <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
-                            </select>
+            <!-- Left Column: Calendar & Quick Controls -->
+            <div class="space-y-6 lg:col-span-1">
+                <div class="bg-white p-5 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
+                        <div class="space-x-1">
+                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
                         </div>
-                        <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
-                        <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
-                            <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
-                        </button>
+                    </div>
+                    <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
+                    <!-- Grid Calendar -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
+                        <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
+                    </div>
+                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
+                    <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
+                        <span id="leg-free">Libero / Frei</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
+                        <span id="leg-partial">Parziale / Teilweise</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
+                        <span id="leg-full">Completo / Voll</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right/Center Columns: Interactive Floor Plan -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white p-5 rounded-xl shadow-sm relative">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <div>
+                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
+                            <div class="flex items-center space-x-2">
+                                <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
+                                <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
+                                    <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
+                                    <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
+                                    <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
+                                    <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
+                                </select>
+                            </div>
+                            <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
+                            <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                                <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CANVAS / AREA DELLA SALA -->
+                    <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+                        <!-- I tavoli verranno posizionati qui dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
+        <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
+            <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <div>
+                        <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
+                        <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
+                    </div>
+                    <!-- Badge Totale Persone Attese -->
+                    <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
+                        <i class="fa-solid fa-users text-indigo-600"></i>
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                            <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- CANVAS / AREA DELLA SALA -->
-                <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
-                    <!-- I tavoli verranno posizionati qui dinamicamente -->
+                <!-- Tabella / Lista delle prenotazioni del giorno -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                                <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
+                                <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
+                                <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
+                                <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
+                                <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
+                                <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
+                            <!-- Inserito dinamicamente da JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Modal Prenotazione Tavolo -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
@@ -159,45 +203,6 @@
             </form>
         </div>
     </div>
-
-    <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
-    <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
-        <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                <div>
-                    <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
-                    <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
-                </div>
-                <!-- Badge Totale Persone Attese -->
-                <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
-                    <i class="fa-solid fa-users text-indigo-600"></i>
-                    <div>
-                        <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
-                        <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Tabella / Lista delle prenotazioni del giorno -->
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-xs">
-                    <thead>
-                        <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
-                            <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
-                            <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
-                            <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
-                            <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
-                            <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
-                            <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
-                        </tr>
-                    </thead>
-                    <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
-                        <!-- Inserito dinamicamente da JavaScript -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </main>
     
     <!-- Modal Aggiungi Tavolo (Edit Mode) -->
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
@@ -226,103 +231,18 @@
     </div>
 
     <script>
-// 1. Inizializzazione del client Supabase (inserisci i tuoi dati reali)
-const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-
-// Questo crea l'oggetto 'supabase' che ora risponderà correttamente
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-// 2. Subito sotto, lasci la tua funzione che adesso funzionerà senza errori
-async function eseguiLogin() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password
-  });
-
-  if (authError) {
-    alert("Errore di login: " + authError.message);
-    return;
-  }
-
-  const user = authData.user;
-}
-        
-        // Funzione richiamata dal bottone "Accedi"
-async function eseguiLogin() {
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-
-  // 1. Autenticazione con Supabase
-  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-    email: email,
-    password: password
-  });
-
-  if (authError) {
-    alert("Errore di login: " + authError.message);
-    return;
-  }
-
-  const user = authData.user;
-
-  // Nasconde la schermata di login e mostra l'app
-  document.getElementById('login-container').style.display = 'none';
-
-  // 2. Controllo se sei l'Admin principale
-  if (email === 'admin@admin.com') {
-    console.log("Accesso come Super Admin");
-    // Qui carichi la vista globale o l'elenco di tutti i ristoranti
-    caricaVistaAdmin();
-    return;
-  }
-
-  // 3. Se è un ristoratore, recupera il suo restaurant_id
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('restaurant_id, restaurant_name')
-    .eq('id', user.id)
-    .single();
-
-  if (profileError || !profile) {
-    alert("Nessun ristorante associato a questo utente.");
-    return;
-  }
-
-  const currentRestaurantId = profile.restaurant_id;
-  console.log("Ristorante caricato:", profile.restaurant_name);
-
-  // 4. Carica i dati filtrati per questo locale
-  caricaDatiRistorante(currentRestaurantId);
-}
-
-// Funzione modificata per caricare solo i dati del ristorante specifico
-async function caricaDatiRistorante(restaurantId) {
-  // Carica i tavoli di QUESTO ristorante
-  const { data: tables } = await supabase
-    .from('tables')
-    .select('*')
-    .eq('restaurant_id', restaurantId);
-
-  // Carica le prenotazioni di QUESTO ristorante
-  const { data: bookings } = await supabase
-    .from('bookings')
-    .select('*')
-    .eq('restaurant_id', restaurantId);
-
-  // Chiamate alle tue funzioni esistenti per disegnare a schermo i dati
-  // renderizzaTavoli(tables);
-  // renderizzaPrenotazioni(bookings);
-}
-        // --- CONFIGURAZIONE SUPABASE ---
+        // --- CONFIGURAZIONE SUPABASE & VARIABILI GLOBALI ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-        const RESTAURANT_ID = 'ristorante_1';
 
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentRestaurantId = null;
+        let currentLang = 'it';
+        let currentDate = new Date();
+        let tables = [];
+        let bookings = [];
+        let isEditMode = false;
 
         const translations = {
             it: {
@@ -409,32 +329,75 @@ async function caricaDatiRistorante(restaurantId) {
             }
         };
 
-        let currentLang = 'it';
-        let currentDate = new Date();
-        let tables = [];
-        let bookings = [];
-        let isEditMode = false;
+        // --- GESTIONE LOGIN & AUTENTICAZIONE ---
+        async function eseguiLogin() {
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+
+            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                email: email,
+                password: password
+            });
+
+            if (authError) {
+                alert("Errore di login: " + authError.message);
+                return;
+            }
+
+            const user = authData.user;
+
+            // Nasconde la schermata di login e mostra l'app principale
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('app-container').style.display = 'block';
+
+            // Controllo se è l'Admin principale
+            if (email === 'admin@admin.com') {
+                currentRestaurantId = 'tutti'; // O gestisci la vista globale
+                console.log("Accesso come Super Admin");
+            } else {
+                // Recupera il restaurant_id associato al ristoratore dalla tabella profiles
+                const { data: profile, error: profileError } = await supabase
+                    .from('profiles')
+                    .select('restaurant_id, restaurant_name')
+                    .eq('id', user.id)
+                    .single();
+
+                if (profileError || !profile) {
+                    alert("Nessun profilo ristorante associato a questo utente.");
+                    return;
+                }
+
+                currentRestaurantId = profile.restaurant_id;
+                console.log("Ristorante caricato:", profile.restaurant_name, "(" + currentRestaurantId + ")");
+            }
+
+            initApp();
+        }
 
         async function initApp() {
             setLanguage('it');
             await loadDataFromSupabase();
         }
 
+        // --- CARICAMENTO DATI DA SUPABASE (FILTRATI PER RESTAURANT_ID) ---
         async function loadDataFromSupabase() {
+            if (!currentRestaurantId) return;
+
             try {
-                const { data: tablesData, error: tablesError } = await supabaseClient
-                    .from('tables')
-                    .select('*')
-                    .eq('restaurant_id', RESTAURANT_ID);
-                
+                let queryTables = supabase.from('tables').select('*');
+                let queryBookings = supabase.from('bookings').select('*');
+
+                // Se non è admin, filtra per il proprio restaurant_id
+                if (currentRestaurantId !== 'tutti') {
+                    queryTables = queryTables.eq('restaurant_id', currentRestaurantId);
+                    queryBookings = queryBookings.eq('restaurant_id', currentRestaurantId);
+                }
+
+                const { data: tablesData, error: tablesError } = await queryTables;
                 if (tablesError) throw tablesError;
                 tables = tablesData || [];
 
-                const { data: bookingsData, error: bookingsError } = await supabaseClient
-                    .from('bookings')
-                    .select('*')
-                    .eq('restaurant_id', RESTAURANT_ID);
-
+                const { data: bookingsData, error: bookingsError } = await queryBookings;
                 if (bookingsError) throw bookingsError;
                 
                 bookings = (bookingsData || []).map(b => ({
@@ -463,7 +426,6 @@ async function caricaDatiRistorante(restaurantId) {
             
             const t = translations[lang];
             
-            // Traduzione opzioni menu a tendina orari
             document.getElementById('opt-all').innerText = t.timeFilterAll;
             document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
             document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
@@ -642,22 +604,8 @@ async function caricaDatiRistorante(restaurantId) {
                     statusText = translations[currentLang].full;
                 }
 
-                let width = 110;
-                let height = 110;
-                
-                if (table.seats <= 2) {
-                    width = 80;
-                    height = 80;
-                } else if (table.seats <= 4) {
-                    width = 110;
-                    height = 110;
-                } else if (table.seats <= 8) {
-                    width = 150;
-                    height = 110;
-                } else {
-                    width = Math.min(240, 110 + (table.seats * 6));
-                    height = 120;
-                }
+                let width = table.seats <= 2 ? 80 : table.seats <= 4 ? 110 : table.seats <= 8 ? 150 : Math.min(240, 110 + (table.seats * 6));
+                let height = table.seats <= 8 ? 110 : 120;
 
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
                 const posX = table.pos_x ?? 50;
@@ -669,7 +617,6 @@ async function caricaDatiRistorante(restaurantId) {
                 tableEl.style.top = `${posY}px`;
                 tableEl.style.width = `${width}px`;
                 tableEl.style.height = `${height}px`;
-                tableEl.dataset.id = table.id;
 
                 tableEl.innerHTML = `
                     <div class="flex justify-between items-start pointer-events-none">
@@ -742,7 +689,7 @@ async function caricaDatiRistorante(restaurantId) {
         }
 
         async function updateTableCoordinates(tableId, posX, posY) {
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('tables')
                 .update({ pos_x: posX, pos_y: posY })
                 .eq('id', tableId);
@@ -784,7 +731,7 @@ async function caricaDatiRistorante(restaurantId) {
             const seats = parseInt(document.getElementById('new-table-seats').value);
             const shape = document.getElementById('new-table-shape').value;
 
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('tables')
                 .insert([{
                     table_number: tableNumber,
@@ -792,7 +739,7 @@ async function caricaDatiRistorante(restaurantId) {
                     shape: shape,
                     pos_x: 50,
                     pos_y: 50,
-                    restaurant_id: RESTAURANT_ID
+                    restaurant_id: currentRestaurantId
                 }]);
 
             if (error) {
@@ -801,6 +748,7 @@ async function caricaDatiRistorante(restaurantId) {
             }
 
             closeTableConfigModal();
+            document.getElementById('new-table-number').value = '';
             await loadDataFromSupabase();
         }
 
@@ -865,7 +813,7 @@ async function caricaDatiRistorante(restaurantId) {
                 return;
             }
 
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('bookings')
                 .insert([{
                     table_id: tableId,
@@ -875,7 +823,7 @@ async function caricaDatiRistorante(restaurantId) {
                     name: name,
                     guests: guests,
                     phone: phone,
-                    restaurant_id: RESTAURANT_ID
+                    restaurant_id: currentRestaurantId
                 }]);
 
             if (error) {
@@ -889,7 +837,7 @@ async function caricaDatiRistorante(restaurantId) {
         }
 
         async function deleteBooking(bookingId) {
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('bookings')
                 .delete()
                 .eq('id', bookingId);
@@ -903,8 +851,6 @@ async function caricaDatiRistorante(restaurantId) {
             closeModal();
             renderDailySummary();
         }
-
-        initApp();
     </script>
 </body>
 </html>
