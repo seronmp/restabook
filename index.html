@@ -4,18 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartTable - Pianta Dinamica & Booking</title>
-
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+    
     <script>
+        // --- CONFIGURAZIONE SUPABASE & VARIABILI GLOBALI ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.[...]';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
 
         let supabaseClient = null;
         let currentRestaurantId = null;
-        let currentRestaurantName = '';
         let currentLang = 'it';
         let currentDate = new Date();
         let tables = [];
@@ -27,6 +29,7 @@
         let currentRoomId = 'sala-principale';
         let isEditMode = false;
 
+        // Inizializzazione sicura al caricamento del DOM
         document.addEventListener('DOMContentLoaded', () => {
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -128,9 +131,10 @@
             }
         };
 
+        // --- GESTIONE LOGIN & AUTENTICAZIONE ---
         async function eseguiLogin(event) {
             if (event) event.preventDefault();
-
+            
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
@@ -156,7 +160,6 @@
 
             if (email === 'admin@admin.com') {
                 currentRestaurantId = 'tutti';
-                currentRestaurantName = 'Admin Globale';
             } else {
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
@@ -170,12 +173,6 @@
                 }
 
                 currentRestaurantId = profile.restaurant_id;
-                currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
-            }
-
-            const appTitle = document.getElementById('app-title');
-            if (appTitle) {
-                appTitle.innerText = currentRestaurantName;
             }
 
             initApp();
@@ -186,6 +183,7 @@
             await loadDataFromSupabase();
         }
 
+        // --- CARICAMENTO DATI DA SUPABASE ---
         async function loadDataFromSupabase() {
             if (!currentRestaurantId || !supabaseClient) return;
 
@@ -200,7 +198,7 @@
 
                 const { data: tablesData, error: tablesError } = await queryTables;
                 if (tablesError) throw tablesError;
-
+                
                 tables = (tablesData || []).map(t => ({
                     id: t.id,
                     table_number: t.table_number,
@@ -215,7 +213,7 @@
 
                 const { data: bookingsData, error: bookingsError } = await queryBookings;
                 if (bookingsError) throw bookingsError;
-
+                
                 bookings = (bookingsData || []).map(b => ({
                     id: b.id,
                     tableId: b.table_id,
@@ -238,77 +236,50 @@
 
         function setLanguage(lang) {
             currentLang = lang;
-
-            const itBtn = document.getElementById('btn-it');
-            const deBtn = document.getElementById('btn-de');
-
-            if (itBtn) {
-                itBtn.className = lang === 'it'
-                    ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm'
-                    : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            }
-
-            if (deBtn) {
-                deBtn.className = lang === 'de'
-                    ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm'
-                    : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            }
-
+            document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+            document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+            
             const t = translations[lang];
-
-            const titleEl = document.getElementById('app-title');
-            if (titleEl && currentRestaurantName) {
-                titleEl.innerText = currentRestaurantName;
-            }
-
-            const optAll = document.getElementById('opt-all');
-            const optLunch = document.getElementById('opt-lunch');
-            const optDinner1 = document.getElementById('opt-dinner1');
-            const optDinner2 = document.getElementById('opt-dinner2');
-
-            if (optAll) optAll.innerText = t.timeFilterAll;
-            if (optLunch) optLunch.innerText = t.timeFilterLunch;
-            if (optDinner1) optDinner1.innerText = t.timeFilterDinner1;
-            if (optDinner2) optDinner2.innerText = t.timeFilterDinner2;
-
-            const ids = [
-                ['calendar-title', 'calendar'],
-                ['floor-title', 'floorTitle'],
-                ['floor-subtitle', 'floorSubtitle'],
-                ['lbl-time-filter', 'timeFilter'],
-                ['legend-title', 'legendTitle'],
-                ['leg-free', 'free'],
-                ['leg-partial', 'partial'],
-                ['leg-full', 'full'],
-                ['modal-existing-title', 'existingTitle'],
-                ['modal-form-title', 'formTitle'],
-                ['lbl-start', 'lblStart'],
-                ['lbl-end', 'lblEnd'],
-                ['lbl-name', 'lblName'],
-                ['lbl-guests', 'lblGuests'],
-                ['lbl-phone', 'lblPhone'],
-                ['btn-save', 'btnSave'],
-                ['txt-add-table', 'newTable'],
-                ['txt-add-room', 'newRoom'],
-                ['summary-box-title', 'dailySummaryTitle'],
-                ['summary-box-subtitle', 'dailySummarySub'],
-                ['lbl-total-guests-label', 'totalGuestsLabel'],
-                ['th-time', 'thTime'],
-                ['th-table', 'thTable'],
-                ['th-name', 'thName'],
-                ['th-guests', 'thGuests'],
-                ['th-phone', 'thPhone'],
-                ['th-actions', 'thActions']
-            ];
-
-            ids.forEach(([id, key]) => {
-                const el = document.getElementById(id);
-                if (el) el.innerText = t[key];
-            });
+            
+            document.getElementById('opt-all').innerText = t.timeFilterAll;
+            document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
+            document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
+            document.getElementById('opt-dinner2').innerText = t.timeFilterDinner2;
+                        
+            document.getElementById('app-title').innerText = t.title;
+            document.getElementById('calendar-title').innerText = t.calendar;
+            document.getElementById('floor-title').innerText = t.floorTitle;
+            document.getElementById('floor-subtitle').innerText = t.floorSubtitle;
+            document.getElementById('lbl-time-filter').innerText = t.timeFilter;
+            document.getElementById('legend-title').innerText = t.legendTitle;
+            document.getElementById('leg-free').innerText = t.free;
+            document.getElementById('leg-partial').innerText = t.partial;
+            document.getElementById('leg-full').innerText = t.full;
+            document.getElementById('modal-existing-title').innerText = t.existingTitle;
+            document.getElementById('modal-form-title').innerText = t.formTitle;
+            document.getElementById('lbl-start').innerText = t.lblStart;
+            document.getElementById('lbl-end').innerText = t.lblEnd;
+            document.getElementById('lbl-name').innerText = t.lblName;
+            document.getElementById('lbl-guests').innerText = t.lblGuests;
+            document.getElementById('lbl-phone').innerText = t.lblPhone;
+            document.getElementById('btn-save').innerText = t.btnSave;
+            document.getElementById('txt-add-table').innerText = t.newTable;
+            document.getElementById('txt-add-room').innerText = t.newRoom;
+            document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
+            document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
+            document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
+            document.getElementById('th-time').innerText = t.thTime;
+            document.getElementById('th-table').innerText = t.thTable;
+            document.getElementById('th-name').innerText = t.thName;
+            document.getElementById('th-guests').innerText = t.thGuests;
+            document.getElementById('th-phone').innerText = t.thPhone;
+            document.getElementById('th-actions').innerText = t.thActions;
 
             const editTxtSpan = document.getElementById('txt-edit-mode');
-            if (editTxtSpan) {
-                editTxtSpan.innerText = isEditMode ? t.editModeOn : t.editModeOff;
+            if (isEditMode) {
+                editTxtSpan.innerText = t.editModeOn;
+            } else {
+                editTxtSpan.innerText = t.editModeOff;
             }
 
             renderRooms();
@@ -316,10 +287,10 @@
             renderTables();
         }
 
+        // --- GESTIONE SALE (ROOMS) ---
         function renderRooms() {
             const container = document.getElementById('rooms-tabs-container');
             if (!container) return;
-
             container.innerHTML = '';
 
             rooms.forEach(room => {
@@ -337,13 +308,11 @@
         }
 
         function openAddRoomModal() {
-            const modal = document.getElementById('room-config-modal');
-            if (modal) modal.classList.remove('hidden');
+            document.getElementById('room-config-modal').classList.remove('hidden');
         }
 
         function closeRoomConfigModal() {
-            const modal = document.getElementById('room-config-modal');
-            if (modal) modal.classList.add('hidden');
+            document.getElementById('room-config-modal').classList.add('hidden');
         }
 
         function saveNewRoom(e) {
@@ -373,26 +342,14 @@
             const month = currentDate.getMonth();
             const monthsIt = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
             const monthsDe = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-
-            const monthLabel = document.getElementById('month-year-label');
-            if (monthLabel) {
-                monthLabel.innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
-            }
-
-            const currentDateDisplay = document.getElementById('current-date-display');
-            if (currentDateDisplay) {
-                currentDateDisplay.innerText = currentDate.toLocaleDateString(
-                    currentLang === 'it' ? 'it-IT' : 'de-DE',
-                    { weekday: 'short', day: 'numeric', month: 'short' }
-                );
-            }
+            
+            document.getElementById('month-year-label').innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
+            document.getElementById('current-date-display').innerText = currentDate.toLocaleDateString(currentLang === 'it' ? 'it-IT' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
 
             const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
             const totalDays = new Date(year, month + 1, 0).getDate();
 
             const daysContainer = document.getElementById('calendar-days');
-            if (!daysContainer) return;
-
             daysContainer.innerHTML = '';
             renderDailySummary();
 
@@ -401,7 +358,6 @@
             }
 
             const selectedStr = formatDateKey(currentDate);
-
             for (let d = 1; d <= totalDays; d++) {
                 const dateTest = new Date(year, month, d);
                 const dateStr = formatDateKey(dateTest);
@@ -419,7 +375,7 @@
                     <div onclick="selectDate(${year}, ${month}, ${d})">
                         <button class="${btnClass}">
                             ${d}
-                            ${hasBookings && !isSelected ? '<span class=\"absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full\"></span>' : ''}
+                            ${hasBookings && !isSelected ? '<span class="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"></span>' : ''}
                         </button>
                     </div>
                 `;
@@ -442,8 +398,6 @@
             const tbody = document.getElementById('daily-summary-list');
             const totalCountEl = document.getElementById('total-guests-count');
             const t = translations[currentLang];
-
-            if (!tbody || !totalCountEl) return;
 
             const dayBookings = bookings
                 .filter(b => b.date === currentDateStr)
@@ -484,12 +438,11 @@
 
         function renderTables() {
             const canvas = document.getElementById('floor-canvas');
-            if (!canvas) return;
-
             canvas.innerHTML = '';
             const currentDateStr = formatDateKey(currentDate);
-            const timeFilter = document.getElementById('filter-time') ? document.getElementById('filter-time').value : 'all';
+            const timeFilter = document.getElementById('filter-time').value;
 
+            // Filtra i tavoli in base alla sala attiva corrente
             const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
 
             roomTables.forEach(table => {
@@ -514,8 +467,8 @@
                     statusText = translations[currentLang].full;
                 }
 
-                const width = table.seats <= 2 ? 80 : table.seats <= 4 ? 110 : table.seats <= 8 ? 150 : Math.min(240, 110 + (table.seats * 6));
-                const height = table.seats <= 8 ? 110 : 120;
+                let width = table.seats <= 2 ? 80 : table.seats <= 4 ? 110 : table.seats <= 8 ? 150 : Math.min(240, 110 + (table.seats * 6));
+                let height = table.seats <= 8 ? 110 : 120;
 
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
                 const posX = table.pos_x ?? 50;
@@ -557,8 +510,7 @@
 
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
-            let startX;
-            let startY;
+            let startX, startY;
 
             element.addEventListener('mousedown', (e) => {
                 if (!isEditMode) return;
@@ -572,7 +524,7 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging || !isEditMode) return;
                 const canvasRect = document.getElementById('floor-canvas').getBoundingClientRect();
-
+                
                 let newX = e.clientX - startX;
                 let newY = e.clientY - startY;
 
@@ -587,7 +539,7 @@
                 if (isDragging) {
                     isDragging = false;
                     element.style.zIndex = 1;
-
+                    
                     const newX = parseInt(element.style.left);
                     const newY = parseInt(element.style.top);
 
@@ -603,9 +555,503 @@
 
         async function updateTableCoordinates(tableId, posX, posY) {
             if (!supabaseClient) return;
-
             const { error } = await supabaseClient
                 .from('tables')
                 .update({ pos_x: posX, pos_y: posY })
-                .eq('id', tableId);*
-
+                .eq('id', tableId);
+
+            if (error) {
+                console.error("Errore salvataggio posizione:", error.message);
+            }
+        }
+
+        // Funzione per ruotare il tavolo di 90 gradi
+        async function rotateTable(tableId) {
+            const tableObj = tables.find(t => t.id === tableId);
+            if (!tableObj) return;
+
+            tableObj.rotation = ((tableObj.rotation || 0) + 90) % 360;
+            renderTables();
+
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('tables')
+                    .update({ rotation: tableObj.rotation })
+                    .eq('id', tableId);
+
+                if (error) {
+                    console.error("Errore salvataggio rotazione:", error.message);
+                }
+            }
+        }
+
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btnEdit = document.getElementById('btn-toggle-edit');
+            const btnAddTable = document.getElementById('btn-add-table');
+            const btnAddRoom = document.getElementById('btn-add-room');
+            const t = translations[currentLang];
+
+            if (isEditMode) {
+                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm transition flex items-center space-x-1.5";
+                document.getElementById('txt-edit-mode').innerText = t.editModeOn;
+                btnAddTable.classList.remove('hidden');
+                btnAddRoom.classList.remove('hidden');
+            } else {
+                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5";
+                document.getElementById('txt-edit-mode').innerText = t.editModeOff;
+                btnAddTable.classList.add('hidden');
+                btnAddRoom.classList.add('hidden');
+            }
+            renderTables();
+        }
+
+        function openAddTableModal() {
+            document.getElementById('table-config-modal').classList.remove('hidden');
+        }
+
+        function closeTableConfigModal() {
+            document.getElementById('table-config-modal').classList.add('hidden');
+        }
+
+        async function saveNewTable(e) {
+            e.preventDefault();
+            if (!supabaseClient) return;
+            const tableNumber = document.getElementById('new-table-number').value;
+            const seats = parseInt(document.getElementById('new-table-seats').value);
+            const shape = document.getElementById('new-table-shape').value;
+
+            const { error } = await supabaseClient
+                .from('tables')
+                .insert([{
+                    table_number: tableNumber,
+                    seats: seats,
+                    shape: shape,
+                    pos_x: 50,
+                    pos_y: 50,
+                    rotation: 0,
+                    room_id: currentRoomId,
+                    restaurant_id: currentRestaurantId
+                }]);
+
+            if (error) {
+                alert("Errore nella creazione del tavolo: " + error.message);
+                return;
+            }
+
+            closeTableConfigModal();
+            document.getElementById('new-table-number').value = '';
+            await loadDataFromSupabase();
+        }
+
+        function openTableModal(tableId) {
+            const table = tables.find(t => t.id === tableId);
+            const currentDateStr = formatDateKey(currentDate);
+            
+            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
+            document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
+            document.getElementById('form-table-id').value = tableId;
+
+            // Pulsante di rotazione nel modale
+            const rotateBtnContainer = document.getElementById('modal-rotate-container');
+            rotateBtnContainer.innerHTML = `
+                <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-3">
+                    ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
+                </button>
+            `;
+
+            const listContainer = document.getElementById('modal-bookings-list');
+            const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
+            
+            listContainer.innerHTML = '';
+            if (tableBookings.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[currentLang].noBookings}</p>`;
+            } else {
+                tableBookings.forEach(b => {
+                    listContainer.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2 rounded-lg text-xs">
+                            <div>
+                                <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
+                                <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
+                            </div>
+                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('booking-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
+        }
+
+        async function saveBooking(event) {
+            event.preventDefault();
+            if (!supabaseClient) return;
+            const tableId = document.getElementById('form-table-id').value;
+            const startTime = document.getElementById('form-start-time').value;
+            const endTime = document.getElementById('form-end-time').value;
+            const name = document.getElementById('form-name').value;
+            const guests = parseInt(document.getElementById('form-guests').value);
+            const phone = document.getElementById('form-phone').value;
+            const dateStr = formatDateKey(currentDate);
+
+            const table = tables.find(t => t.id === tableId);
+            const t = translations[currentLang];
+
+            if (guests > table.seats) {
+                alert(t.errCapacity + table.seats + ")");
+                return;
+            }
+
+            const existingTableBookings = bookings.filter(b => b.tableId === tableId && b.date === dateStr);
+            const hasOverlap = existingTableBookings.some(b => startTime < b.endTime && endTime > b.startTime);
+
+            if (hasOverlap) {
+                alert(t.errOverlap);
+                return;
+            }
+
+            const { error } = await supabaseClient
+                .from('bookings')
+                .insert([{
+                    table_id: tableId,
+                    date: dateStr,
+                    start_time: startTime,
+                    end_time: endTime,
+                    name: name,
+                    guests: guests,
+                    phone: phone,
+                    restaurant_id: currentRestaurantId
+                }]);
+
+            if (error) {
+                alert("Errore salvataggio: " + error.message);
+                return;
+            }
+
+            await loadDataFromSupabase();
+            closeModal();
+            document.getElementById('booking-form').reset();
+        }
+
+        async function deleteBooking(bookingId) {
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient
+                .from('bookings')
+                .delete()
+                .eq('id', bookingId);
+
+            if (error) {
+                alert("Errore cancellazione: " + error.message);
+                return;
+            }
+
+            await loadDataFromSupabase();
+            closeModal();
+            renderDailySummary();
+        }
+    </script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    
+    <!-- Sezione Login -->
+    <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
+        <form onsubmit="eseguiLogin(event)" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
+            <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
+            <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="password" id="login-password" placeholder="Password" required class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
+        </form>
+    </div>
+// Aggiungi questa variabile in cima insieme alle altre
+let currentRestaurantName = ''; 
+
+async function eseguiLogin(event) {
+  if (event) event.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  
+  if (!supabaseClient) {
+    alert("Supabase non è ancora pronto. Riprova tra un secondo.");
+    return;
+  }
+  
+  const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ 
+    email: email, 
+    password: password 
+  });
+  
+  if (authError) {
+    alert("Errore di login: " + authError.message);
+    return;
+  }
+  
+  const user = authData.user;
+  document.getElementById('login-container').style.display = 'none';
+  document.getElementById('app-container').style.display = 'block';
+  
+  if (email === 'admin@admin.com') {
+    currentRestaurantId = 'tutti';
+    currentRestaurantName = 'Admin Globale';
+  } else {
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('restaurant_id, restaurant_name')
+      .eq('id', user.id)
+      .single();
+      
+    if (profileError || !profile) {
+      alert("Nessun profilo ristorante associato a questo utente.");
+      return;
+    }
+    
+    currentRestaurantId = profile.restaurant_id;
+    currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
+  }
+  
+  // Aggiorna il testo dell'header con il nome del ristorante
+  document.getElementById('app-title').innerText = currentRestaurantName;
+  initApp();
+}
+
+    
+    <!-- CONTENITORE DELL'APP -->
+    <div id="app-container" style="display: none;">
+
+        <!-- Header & Language Switcher -->
+        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
+                <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Pulsante Modifica Sala -->
+                <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                    <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
+                </button>
+                <div class="flex bg-gray-200 rounded-lg p-1">
+                    <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
+                    <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
+                </div>
+                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- Left Column: Calendar & Quick Controls -->
+            <div class="space-y-6 lg:col-span-1">
+                <div class="bg-white p-5 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
+                        <div class="space-x-1">
+                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
+                    <!-- Grid Calendar -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
+                        <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
+                    </div>
+                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
+                    <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
+                        <span id="leg-free">Libero / Frei</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
+                        <span id="leg-partial">Parziale / Teilweise</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
+                        <span id="leg-full">Completo / Voll</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right/Center Columns: Interactive Floor Plan & Multiple Rooms -->
+            <div class="lg:col-span-3 space-y-6">
+                
+                <!-- Selezione Sale (Tabs) e Pulsante Nuova Sala in Edit Mode -->
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
+                    <div id="rooms-tabs-container" class="flex flex-wrap gap-2">
+                        <!-- Generato dinamicamente -->
+                    </div>
+                    <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+                        <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
+                    </button>
+                </div>
+
+                <div class="bg-white p-5 rounded-xl shadow-sm relative">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <div>
+                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali o ruotali liberamente.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
+                            <div class="flex items-center space-x-2">
+                                <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
+                                <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
+                                    <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
+                                    <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
+                                    <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
+                                    <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
+                                </select>
+                            </div>
+                            <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
+                            <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                                <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CANVAS / AREA DELLA SALA (Espandibile e scrollabile) -->
+                    <div id="floor-canvas" class="relative w-full h-[650px] min-w-[900px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-auto shadow-inner">
+                        <!-- I tavoli verranno posizionati qui dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE -->
+        <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
+            <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <div>
+                        <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
+                        <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
+                    </div>
+                    <!-- Badge Totale Persone Attese -->
+                    <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
+                        <i class="fa-solid fa-users text-indigo-600"></i>
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                            <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabella / Lista delle prenotazioni del giorno -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                                <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
+                                <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
+                                <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
+                                <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
+                                <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
+                                <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
+                            <!-- Inserito dinamicamente da JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Prenotazione Tavolo con Controllo Rotazione -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
+            <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
+
+            <!-- Container Pulsante Rotazione Tavolo -->
+            <div id="modal-rotate-container"></div>
+
+            <div class="mb-4">
+                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
+                <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
+            </div>
+
+            <hr class="my-4 border-gray-100">
+
+            <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
+                <input type="hidden" id="form-table-id">
+                <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-start" class="block text-xs font-medium text-gray-600 mb-1">Dalle / Von</label>
+                        <input type="time" id="form-start-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-end" class="block text-xs font-medium text-gray-600 mb-1">Fino alle / Bis</label>
+                        <input type="time" id="form-end-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label id="lbl-name" class="block text-xs font-medium text-gray-600 mb-1">Nome / Name</label>
+                    <input type="text" id="form-name" required placeholder="Es. Rossi" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-guests" class="block text-xs font-medium text-gray-600 mb-1">Persone / Personen</label>
+                        <input type="number" id="form-guests" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
+                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Aggiungi Tavolo (Edit Mode) -->
+    <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
+            <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
+            <form onsubmit="saveNewTable(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9)</label>
+                    <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Posti a sedere (Capienza)</label>
+                    <input type="number" id="new-table-seats" min="1" value="4" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Forma</label>
+                    <select id="new-table-shape" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        <option value="square">Quadrato / Rettangolare</option>
+                        <option value="circle">Rotondo</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition mt-2">Crea Tavolo / Erstellen</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Aggiungi Sala (Edit Mode) -->
+    <div id="room-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
+            <button onclick="closeRoomConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-gray-900 mb-3" id="room-modal-title">Aggiungi Nuova Sala</h3>
+            <form onsubmit="saveNewRoom(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nome della Sala (es. Terrazza)</label>
+                    <input type="text" id="new-room-name" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 text-white font-medium py-2 rounded-lg hover:bg-emerald-700 transition mt-2">Crea Sala</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
