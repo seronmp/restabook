@@ -478,7 +478,7 @@
             });
         }
 
-       // --- DRAG AND DROP LOGIC ---
+      // --- DRAG AND DROP LOGIC ---
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
@@ -499,26 +499,14 @@
                 let newX = e.clientX - startX;
                 let newY = e.clientY - startY;
 
-                // Limiti all'interno del canvas basati sulla grandezza reale del tavolo
                 newX = Math.max(0, Math.min(newX, canvasRect.width - width - 10));
                 newY = Math.max(0, Math.min(newY, canvasRect.height - height - 10));
 
                 element.style.left = `${newX}px`;
                 element.style.top = `${newY}px`;
-                
-                // 1. Aggiorna l'oggetto in memoria se hai un array di tavoli (es. tables)
-                    const tableObj = tables.find(t => t.id === tableId);
-                    if (tableObj) {
-                        tableObj.x = newX;
-                        tableObj.y = newY;
-                    }
-
-                    // 2. Salva sul database
-                    await updateTableCoordinates(tableId, newX, newY);
             });
 
-        // --- DRAG AND DROP CORRETTO ---
-           // --- DRAG AND DROP CORRETTO E ASINCRONO ---
+            // NOTA CRUCIALE: 'async' deve esserci qui prima delle parentesi!
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
@@ -527,18 +515,17 @@
                     const newX = parseInt(element.style.left);
                     const newY = parseInt(element.style.top);
 
-                    // Aggiorna lo stato locale in memoria
                     const tableObj = tables.find(t => t.id === tableId);
                     if (tableObj) {
                         tableObj.pos_x = newX;
                         tableObj.pos_y = newY;
                     }
 
-                    // Salva su Supabase (ora l'await è dentro una funzione 'async')
+                    // Questo 'await' ora è dentro una funzione async e non darà più errore
                     await updateTableCoordinates(tableId, newX, newY);
                 }
             });
-
+        }
                     // Salva su Supabase
                     await updateTableCoordinates(tableId, newX, newY);
                 }
