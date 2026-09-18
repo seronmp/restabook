@@ -766,59 +766,57 @@
             <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
         </form>
     </div>
-
-let currentRestaurantName = ''; // Aggiungi questa variabile in cima insieme alle altre
+// Aggiungi questa variabile in cima insieme alle altre
+let currentRestaurantName = ''; 
 
 async function eseguiLogin(event) {
-    if (event) event.preventDefault();
+  if (event) event.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+  
+  if (!supabaseClient) {
+    alert("Supabase non è ancora pronto. Riprova tra un secondo.");
+    return;
+  }
+  
+  const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({ 
+    email: email, 
+    password: password 
+  });
+  
+  if (authError) {
+    alert("Errore di login: " + authError.message);
+    return;
+  }
+  
+  const user = authData.user;
+  document.getElementById('login-container').style.display = 'none';
+  document.getElementById('app-container').style.display = 'block';
+  
+  if (email === 'admin@admin.com') {
+    currentRestaurantId = 'tutti';
+    currentRestaurantName = 'Admin Globale';
+  } else {
+    const { data: profile, error: profileError } = await supabaseClient
+      .from('profiles')
+      .select('restaurant_id, restaurant_name')
+      .eq('id', user.id)
+      .single();
+      
+    if (profileError || !profile) {
+      alert("Nessun profilo ristorante associato a questo utente.");
+      return;
+    }
     
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-
-    if (!supabaseClient) {
-        alert("Supabase non è ancora pronto. Riprova tra un secondo.");
-        return;
-    }
-
-    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-    });
-
-    if (authError) {
-        alert("Errore di login: " + authError.message);
-        return;
-    }
-
-    const user = authData.user;
-
-    document.getElementById('login-container').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
-
-    if (email === 'admin@admin.com') {
-        currentRestaurantId = 'tutti';
-        currentRestaurantName = 'Admin Globale';
-    } else {
-        const { data: profile, error: profileError } = await supabaseClient
-            .from('profiles')
-            .select('restaurant_id, restaurant_name')
-            .eq('id', user.id)
-            .single();
-
-        if (profileError || !profile) {
-            alert("Nessun profilo ristorante associato a questo utente.");
-            return;
-        }
-
-        currentRestaurantId = profile.restaurant_id;
-        currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
-    }
-
-    // Aggiorna il testo dell'header con il nome del ristorante
-    document.getElementById('app-title').innerText = currentRestaurantName;
-
-    initApp();
+    currentRestaurantId = profile.restaurant_id;
+    currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
+  }
+  
+  // Aggiorna il testo dell'header con il nome del ristorante
+  document.getElementById('app-title').innerText = currentRestaurantName;
+  initApp();
 }
+
     
     <!-- CONTENITORE DELL'APP -->
     <div id="app-container" style="display: none;">
