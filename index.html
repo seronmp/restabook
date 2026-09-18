@@ -11,7 +11,6 @@
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- Script spostato nell'head e strutturato per evitare errori di riferimento -->
     <script>
         // --- CONFIGURAZIONE SUPABASE & VARIABILI GLOBALI ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
@@ -23,6 +22,11 @@
         let currentDate = new Date();
         let tables = [];
         let bookings = [];
+        let rooms = [
+            { id: 'sala-principale', name: 'Sala Principale / Hauptsaal' },
+            { id: 'veranda', name: 'Veranda / Terrasse' }
+        ];
+        let currentRoomId = 'sala-principale';
         let isEditMode = false;
 
         // Inizializzazione sicura al caricamento del DOM
@@ -37,7 +41,7 @@
                 title: "SmartTable Manager",
                 calendar: "Calendario",
                 floorTitle: "Pianta Interattiva della Sala",
-                floorSubtitle: "Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.",
+                floorSubtitle: "Clicca su un tavolo per prenotare. In modalità modifica, trascinali o ruotali liberamente.",
                 timeFilter: "Fascia:",
                 legendTitle: "Legenda Tavoli:",
                 free: "Libero",
@@ -57,6 +61,11 @@
                 editModeOn: "Salva Posizioni (Fine Modifica)",
                 editModeOff: "Modifica Sala / Raum bearbeiten",
                 newTable: "Nuovo Tavolo",
+                newRoom: "+ Nuova Sala",
+                roomModalTitle: "Aggiungi Nuova Sala",
+                lblRoomName: "Nome Sala",
+                btnSaveRoom: "Crea Sala",
+                rotateTable: "Ruota 90° 🔄",
                 errCapacity: "Il numero di ospiti supera la capienza di questo tavolo (max posti: ",
                 errOverlap: "Attenzione: questo tavolo è già occupato nell'orario selezionato!",
                 dailySummaryTitle: "Riepilogo Prenotazioni del Giorno",
@@ -78,7 +87,7 @@
                 title: "SmartTable Manager",
                 calendar: "Kalender",
                 floorTitle: "Interaktiver Tischplan",
-                floorSubtitle: "Klicken Sie auf einen Tisch zum Reservieren. Im Bearbeitungsmodus frei verschiebbar.",
+                floorSubtitle: "Klicken Sie auf einen Tisch zum Reservieren. Im Bearbeitungsmodus frei verschiebbar und drehbar.",
                 timeFilter: "Zeitfenster:",
                 legendTitle: "Tisch-Legende:",
                 free: "Frei",
@@ -98,6 +107,11 @@
                 editModeOn: "Positionen speichern (Fertig)",
                 editModeOff: "Raum bearbeiten",
                 newTable: "Neuer Tisch",
+                newRoom: "+ Neuer Saal",
+                roomModalTitle: "Neuen Saal hinzufügen",
+                lblRoomName: "Saalname",
+                btnSaveRoom: "Saal erstellen",
+                rotateTable: "90° drehen 🔄",
                 errCapacity: "Die Anzahl der Gäste überschreitet die Kapazität (max. Plätze: ",
                 errOverlap: "Achtung: Dieser Tisch ist zur gewählten Zeit bereits belegt!",
                 dailySummaryTitle: "Tages-Reservierungsübersicht",
@@ -184,7 +198,18 @@
 
                 const { data: tablesData, error: tablesError } = await queryTables;
                 if (tablesError) throw tablesError;
-                tables = tablesData || [];
+                
+                tables = (tablesData || []).map(t => ({
+                    id: t.id,
+                    table_number: t.table_number,
+                    seats: t.seats,
+                    shape: t.shape,
+                    pos_x: t.pos_x ?? 50,
+                    pos_y: t.pos_y ?? 50,
+                    rotation: t.rotation ?? 0,
+                    room_id: t.room_id || 'sala-principale',
+                    restaurant_id: t.restaurant_id
+                }));
 
                 const { data: bookingsData, error: bookingsError } = await queryBookings;
                 if (bookingsError) throw bookingsError;
@@ -200,6 +225,7 @@
                     phone: b.phone
                 }));
 
+                renderRooms();
                 renderCalendar();
                 renderTables();
                 renderDailySummary();
@@ -238,6 +264,7 @@
             document.getElementById('lbl-phone').innerText = t.lblPhone;
             document.getElementById('btn-save').innerText = t.btnSave;
             document.getElementById('txt-add-table').innerText = t.newTable;
+            document.getElementById('txt-add-room').innerText = t.newRoom;
             document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
             document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
             document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
@@ -255,7 +282,51 @@
                 editTxtSpan.innerText = t.editModeOff;
             }
 
+            renderRooms();
             renderCalendar();
+            renderTables();
+        }
+
+        // --- GESTIONE SALE (ROOMS) ---
+        function renderRooms() {
+            const container = document.getElementById('rooms-tabs-container');
+            if (!container) return;
+            container.innerHTML = '';
+
+            rooms.forEach(room => {
+                const isActive = room.id === currentRoomId;
+                const btn = document.createElement('button');
+                btn.className = `px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${isActive ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`;
+                btn.innerText = room.name;
+                btn.onclick = () => {
+                    currentRoomId = room.id;
+                    renderRooms();
+                    renderTables();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function openAddRoomModal() {
+            document.getElementById('room-config-modal').classList.remove('hidden');
+        }
+
+        function closeRoomConfigModal() {
+            document.getElementById('room-config-modal').classList.add('hidden');
+        }
+
+        function saveNewRoom(e) {
+            e.preventDefault();
+            const roomName = document.getElementById('new-room-name').value.trim();
+            if (!roomName) return;
+
+            const newId = 'sala-' + Date.now();
+            rooms.push({ id: newId, name: roomName });
+            currentRoomId = newId;
+
+            closeRoomConfigModal();
+            document.getElementById('new-room-name').value = '';
+            renderRooms();
             renderTables();
         }
 
@@ -371,7 +442,10 @@
             const currentDateStr = formatDateKey(currentDate);
             const timeFilter = document.getElementById('filter-time').value;
 
-            tables.forEach(table => {
+            // Filtra i tavoli in base alla sala attiva corrente
+            const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
+
+            roomTables.forEach(table => {
                 let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
 
                 if (timeFilter !== 'all') {
@@ -399,6 +473,7 @@
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
                 const posX = table.pos_x ?? 50;
                 const posY = table.pos_y ?? 50;
+                const rotation = table.rotation ?? 0;
 
                 const tableEl = document.createElement('div');
                 tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md`;
@@ -406,6 +481,7 @@
                 tableEl.style.top = `${posY}px`;
                 tableEl.style.width = `${width}px`;
                 tableEl.style.height = `${height}px`;
+                tableEl.style.transform = `rotate(${rotation}deg)`;
 
                 tableEl.innerHTML = `
                     <div class="flex justify-between items-start pointer-events-none">
@@ -489,20 +565,43 @@
             }
         }
 
+        // Funzione per ruotare il tavolo di 90 gradi
+        async function rotateTable(tableId) {
+            const tableObj = tables.find(t => t.id === tableId);
+            if (!tableObj) return;
+
+            tableObj.rotation = ((tableObj.rotation || 0) + 90) % 360;
+            renderTables();
+
+            if (supabaseClient) {
+                const { error } = await supabaseClient
+                    .from('tables')
+                    .update({ rotation: tableObj.rotation })
+                    .eq('id', tableId);
+
+                if (error) {
+                    console.error("Errore salvataggio rotazione:", error.message);
+                }
+            }
+        }
+
         function toggleEditMode() {
             isEditMode = !isEditMode;
             const btnEdit = document.getElementById('btn-toggle-edit');
             const btnAddTable = document.getElementById('btn-add-table');
+            const btnAddRoom = document.getElementById('btn-add-room');
             const t = translations[currentLang];
 
             if (isEditMode) {
                 btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm transition flex items-center space-x-1.5";
                 document.getElementById('txt-edit-mode').innerText = t.editModeOn;
                 btnAddTable.classList.remove('hidden');
+                btnAddRoom.classList.remove('hidden');
             } else {
                 btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5";
                 document.getElementById('txt-edit-mode').innerText = t.editModeOff;
                 btnAddTable.classList.add('hidden');
+                btnAddRoom.classList.add('hidden');
             }
             renderTables();
         }
@@ -530,6 +629,8 @@
                     shape: shape,
                     pos_x: 50,
                     pos_y: 50,
+                    rotation: 0,
+                    room_id: currentRoomId,
                     restaurant_id: currentRestaurantId
                 }]);
 
@@ -550,6 +651,14 @@
             document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
+
+            // Pulsante di rotazione nel modale
+            const rotateBtnContainer = document.getElementById('modal-rotate-container');
+            rotateBtnContainer.innerHTML = `
+                <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-3">
+                    ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
+                </button>
+            `;
 
             const listContainer = document.getElementById('modal-bookings-list');
             const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
@@ -648,7 +757,7 @@
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
     
-    <!-- Sezione Login racchiusa in un form per eliminare il warning della password -->
+    <!-- Sezione Login -->
     <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
         <form onsubmit="eseguiLogin(event)" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
             <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
@@ -658,7 +767,7 @@
         </form>
     </div>
 
-    <!-- CONTENITORE DELL'APP (Inizialmente nascosto) -->
+    <!-- CONTENITORE DELL'APP -->
     <div id="app-container" style="display: none;">
 
         <!-- Header & Language Switcher -->
@@ -668,7 +777,7 @@
                 <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
             </div>
             <div class="flex items-center space-x-4">
-                <!-- Pulsante Modalità Modifica Sala -->
+                <!-- Pulsante Modifica Sala -->
                 <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
                     <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
@@ -720,13 +829,24 @@
                 </div>
             </div>
 
-            <!-- Right/Center Columns: Interactive Floor Plan -->
+            <!-- Right/Center Columns: Interactive Floor Plan & Multiple Rooms -->
             <div class="lg:col-span-3 space-y-6">
+                
+                <!-- Selezione Sale (Tabs) e Pulsante Nuova Sala in Edit Mode -->
+                <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
+                    <div id="rooms-tabs-container" class="flex flex-wrap gap-2">
+                        <!-- Generato dinamicamente -->
+                    </div>
+                    <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+                        <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
+                    </button>
+                </div>
+
                 <div class="bg-white p-5 rounded-xl shadow-sm relative">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
                             <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
-                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali o ruotali liberamente.</p>
                         </div>
                         <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
                             <div class="flex items-center space-x-2">
@@ -745,15 +865,15 @@
                         </div>
                     </div>
 
-                    <!-- CANVAS / AREA DELLA SALA -->
-                    <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+                    <!-- CANVAS / AREA DELLA SALA (Espandibile e scrollabile) -->
+                    <div id="floor-canvas" class="relative w-full h-[650px] min-w-[900px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-auto shadow-inner">
                         <!-- I tavoli verranno posizionati qui dinamicamente -->
                     </div>
                 </div>
             </div>
         </main>
 
-        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
+        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE -->
         <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
             <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
@@ -793,12 +913,15 @@
         </main>
     </div>
 
-    <!-- Modal Prenotazione Tavolo -->
+    <!-- Modal Prenotazione Tavolo con Controllo Rotazione -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
-            <p id="modal-table-info" class="text-xs text-gray-500 mb-4">Posti: 4</p>
+            <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
+
+            <!-- Container Pulsante Rotazione Tavolo -->
+            <div id="modal-rotate-container"></div>
 
             <div class="mb-4">
                 <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
@@ -861,6 +984,21 @@
                     </select>
                 </div>
                 <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition mt-2">Crea Tavolo / Erstellen</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Aggiungi Sala (Edit Mode) -->
+    <div id="room-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
+            <button onclick="closeRoomConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-gray-900 mb-3" id="room-modal-title">Aggiungi Nuova Sala</h3>
+            <form onsubmit="saveNewRoom(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Nome della Sala (es. Terrazza)</label>
+                    <input type="text" id="new-room-name" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <button type="submit" class="w-full bg-emerald-600 text-white font-medium py-2 rounded-lg hover:bg-emerald-700 transition mt-2">Crea Sala</button>
             </form>
         </div>
     </div>
