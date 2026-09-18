@@ -416,18 +416,39 @@
                 }
 
                 // Forma rotonda o quadrata
-                const shapeClass = table.shape === 'circle' ? 'rounded-full aspect-square' : 'rounded-xl';
+               // Calcolo dinamico della grandezza in base ai posti (seats)
+                let width = 110;
+                let height = 110;
+                
+                if (table.seats <= 2) {
+                    width = 80;
+                    height = 80;
+                } else if (table.seats <= 4) {
+                    width = 110;
+                    height = 110;
+                } else if (table.seats <= 8) {
+                    width = 150;
+                    height = 110; // Più largo per tavolate
+                } else {
+                    // Per tavoli grandi (es. 10, 12, 20 posti)
+                    width = Math.min(240, 110 + (table.seats * 6));
+                    height = 120;
+                }
+
+                const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
 
                 // Coordinate predefinite se non impostate
                 const posX = table.pos_x ?? 50;
                 const posY = table.pos_y ?? 50;
 
                 const tableEl = document.createElement('div');
-                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md w-28 h-28`;
+                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md`;
                 tableEl.style.left = `${posX}px`;
                 tableEl.style.top = `${posY}px`;
+                tableEl.style.width = `${width}px`;
+                tableEl.style.height = `${height}px`;
                 tableEl.dataset.id = table.id;
-
+                
                 tableEl.innerHTML = `
                     <div class="flex justify-between items-start pointer-events-none">
                         <span class="text-xs font-black opacity-70">T-${table.table_number}</span>
@@ -450,15 +471,15 @@
                 // --- GESTIONE DRAG AND DROP (MODALITÀ MODIFICA) ---
                 if (isEditMode) {
                     tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-2');
-                    enableDrag(tableEl, table.id);
+                    enableDrag(tableEl, table.id, width, height);
                 }
 
                 canvas.appendChild(tableEl);
             });
         }
 
-        // --- DRAG AND DROP LOGIC ---
-        function enableDrag(element, tableId) {
+       // --- DRAG AND DROP LOGIC ---
+        function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
 
@@ -478,14 +499,24 @@
                 let newX = e.clientX - startX;
                 let newY = e.clientY - startY;
 
-                // Limiti all'interno del canvas
-                newX = Math.max(0, Math.min(newX, canvasRect.width - 110));
-                newY = Math.max(0, Math.min(newY, canvasRect.height - 110));
+                // Limiti all'interno del canvas basati sulla grandezza reale del tavolo
+                newX = Math.max(0, Math.min(newX, canvasRect.width - width - 10));
+                newY = Math.max(0, Math.min(newY, canvasRect.height - height - 10));
 
                 element.style.left = `${newX}px`;
                 element.style.top = `${newY}px`;
             });
 
+            document.addEventListener('mouseup', async () => {
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.zIndex = 1;
+                    const newX = parseInt(element.style.left);
+                    const newY = parseInt(element.style.top);
+                    await updateTableCoordinates(tableId, newX, newY);
+                }
+            });
+     
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
