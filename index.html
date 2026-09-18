@@ -84,11 +84,11 @@
                         <div class="flex items-center space-x-2">
                             <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
                             <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
-                                <option value="all">Tutta la giornata / Ganztägig</option>
-                                <option value="12:00-15:00">Pranzo (12-15)</option>
-                                <option value="18:00-21:00">Cena 1 (18-21)</option>
-                                <option value="21:00-23:30">Cena 2 (21-23:30)</option>
-                            </select>
+                            <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
+                            <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
+                            <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
+                            <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
+                        </select>
                         </div>
                         <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
                         <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
@@ -257,7 +257,10 @@
                 thGuests: "Persone",
                 thPhone: "Telefono",
                 thActions: "Azioni",
-                noDailyBookings: "Nessuna prenotazione registrata per questa data."
+                noDailyBookings: "Nessuna prenotazione registrata per questa data.",
+                timeFilterAll: "Tutta la giornata / Ganztägig",
+                timeFilterLunch: "Pranzo",
+                timeFilterDinner: "Cena"
             },
             de: {
                 title: "SmartTable Manager",
@@ -295,6 +298,9 @@
                 thPhone: "Telefon",
                 thActions: "Aktion",
                 noDailyBookings: "Keine Reservierungen für dieses Datum."
+                timeFilterAll: "Ganztägig / Tutta la giornata",
+                timeFilterLunch: "Mittagessen",
+                timeFilterDinner: "Abendessen"
             }
         };
 
@@ -349,7 +355,11 @@
             currentLang = lang;
             document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
             document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            
+            document.getElementById('opt-all').innerText = currentLang === 'it' ? "Tutta la giornata" : "Ganztägig";
+            document.getElementById('opt-lunch').innerText = currentLang === 'it' ? "Pranzo (12-15)" : "Mittagessen (12-15)";
+            document.getElementById('opt-dinner1').innerText = currentLang === 'it' ? "Cena 1 (18-21)" : "Abendessen 1 (18-21)";
+            document.getElementById('opt-dinner2').innerText = currentLang === 'it' ? "Cena 2 (21-23:30)" : "Abendessen 2 (21-23:30)";
+                        
             const t = translations[lang];
             document.getElementById('app-title').innerText = t.title;
             document.getElementById('calendar-title').innerText = t.calendar;
