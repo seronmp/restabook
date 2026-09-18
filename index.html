@@ -247,7 +247,17 @@
                 editModeOff: "Modifica Sala / Raum bearbeiten",
                 newTable: "Nuovo Tavolo",
                 errCapacity: "Il numero di ospiti supera la capienza di questo tavolo (max posti: ",
-                errOverlap: "Attenzione: questo tavolo è già occupato nell'orario selezionato!"
+                errOverlap: "Attenzione: questo tavolo è già occupato nell'orario selezionato!",
+                dailySummaryTitle: "Riepilogo Prenotazioni del Giorno",
+                dailySummarySub: "Elenco completo e totale ospiti attesi per la data selezionata.",
+                totalGuestsLabel: "Totale Ospiti Attesi",
+                thTime: "Orario",
+                thTable: "Tavolo",
+                thName: "Cliente",
+                thGuests: "Persone",
+                thPhone: "Telefono",
+                thActions: "Azioni",
+                noDailyBookings: "Nessuna prenotazione registrata per questa data."
             },
             de: {
                 title: "SmartTable Manager",
@@ -274,7 +284,17 @@
                 editModeOff: "Raum bearbeiten",
                 newTable: "Neuer Tisch",
                 errCapacity: "Die Anzahl der Gäste überschreitet die Kapazität (max. Plätze: ",
-                errOverlap: "Achtung: Dieser Tisch ist zur gewählten Zeit bereits belegt!"
+                errOverlap: "Achtung: Dieser Tisch ist zur gewählten Zeit bereits belegt!",
+                dailySummaryTitle: "Tages-Reservierungsübersicht",
+                dailySummarySub: "Vollständige Liste und erwartete Gäste für das gewählte Datum.",
+                totalGuestsLabel: "Erwartete Gäste",
+                thTime: "Uhrzeit",
+                thTable: "Tisch",
+                thName: "Kunde",
+                thGuests: "Personen",
+                thPhone: "Telefon",
+                thActions: "Aktion",
+                noDailyBookings: "Keine Reservierungen für dieses Datum."
             }
         };
 
@@ -319,6 +339,7 @@
 
                 renderCalendar();
                 renderTables();
+                renderDailySummary();
             } catch (err) {
                 console.error("Errore caricamento Supabase:", err.message);
             }
@@ -348,6 +369,15 @@
             document.getElementById('lbl-phone').innerText = t.lblPhone;
             document.getElementById('btn-save').innerText = t.btnSave;
             document.getElementById('txt-add-table').innerText = t.newTable;
+            document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
+            document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
+            document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
+            document.getElementById('th-time').innerText = t.thTime;
+            document.getElementById('th-table').innerText = t.thTable;
+            document.getElementById('th-name').innerText = t.thName;
+            document.getElementById('th-guests').innerText = t.thGuests;
+            document.getElementById('th-phone').innerText = t.thPhone;
+            document.getElementById('th-actions').innerText = t.thActions;
 
             const editTxtSpan = document.getElementById('txt-edit-mode');
             if (isEditMode) {
@@ -381,6 +411,7 @@
 
             const daysContainer = document.getElementById('calendar-days');
             daysContainer.innerHTML = '';
+            renderDailySummary();
 
             for (let i = 0; i < firstDayIndex; i++) {
                 daysContainer.innerHTML += `<div></div>`;
@@ -422,6 +453,49 @@
             renderCalendar();
         }
 
+      function renderDailySummary() {
+            const currentDateStr = formatDateKey(currentDate);
+            const tbody = document.getElementById('daily-summary-list');
+            const totalCountEl = document.getElementById('total-guests-count');
+            const t = translations[currentLang];
+
+            // Filtra le prenotazioni del giorno corrente e ordinacele per orario
+            const dayBookings = bookings
+                .filter(b => b.date === currentDateStr)
+                .sort((a, b) => a.startTime.localeCompare(b.startTime));
+
+            tbody.innerHTML = '';
+            let totalGuests = 0;
+
+            if (dayBookings.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-400 italic">${t.noDailyBookings}</td></tr>`;
+                totalCountEl.innerText = '0';
+                return;
+            }
+
+            dayBookings.forEach(b => {
+                totalGuests += b.guests;
+                const tableObj = tables.find(t => t.id === b.tableId);
+                const tableNum = tableObj ? tableObj.table_number : '-';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-gray-50/80 transition">
+                        <td class="py-3 px-3 font-bold text-indigo-600">${b.startTime} - ${b.endTime}</td>
+                        <td class="py-3 px-3 font-semibold">T-${tableNum}</td>
+                        <td class="py-3 px-3 font-medium text-gray-900">${b.name}</td>
+                        <td class="py-3 px-3"><span class="bg-gray-100 px-2 py-0.5 rounded-md font-bold">${b.guests}</span></td>
+                        <td class="py-3 px-3 text-gray-500">${b.phone || '-'}</td>
+                        <td class="py-3 px-3 text-right">
+                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="Elimina">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            totalCountEl.innerText = totalGuests;
+        }
         // --- RENDER DEI TAVOLI CON DIMENSIONI DINAMICHE IN BASE AI POSTI ---
         function renderTables() {
             const canvas = document.getElementById('floor-canvas');
@@ -712,6 +786,7 @@
 
             await loadDataFromSupabase();
             closeModal();
+            renderDailySummary();
         }
 
         initApp();
