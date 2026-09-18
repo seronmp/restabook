@@ -12,7 +12,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
-
+    
+<!-- Sezione Login (visibile all'avvio se non autenticati) -->
+<div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
+    <div class="p-8 bg-white rounded-lg shadow-md w-96">
+        <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
+        <input type="email" id="login-email" placeholder="Email" class="w-full p-2 mb-4 border rounded" />
+        <input type="password" id="login-password" placeholder="Password" class="w-full p-2 mb-6 border rounded" />
+        <button onclick="eseguiLogin()" class="w-full py-2 text-white bg-blue-600 rounded hover:bg-blue-700">Accedi</button>
+    </div>
+</div>
     <!-- Header & Language Switcher -->
     <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
         <div class="flex items-center space-x-3">
@@ -217,6 +226,72 @@
     </div>
 
     <script>
+        // Funzione richiamata dal bottone "Accedi"
+async function eseguiLogin() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  // 1. Autenticazione con Supabase
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (authError) {
+    alert("Errore di login: " + authError.message);
+    return;
+  }
+
+  const user = authData.user;
+
+  // Nasconde la schermata di login e mostra l'app
+  document.getElementById('login-container').style.display = 'none';
+
+  // 2. Controllo se sei l'Admin principale
+  if (email === 'admin@admin.com') {
+    console.log("Accesso come Super Admin");
+    // Qui carichi la vista globale o l'elenco di tutti i ristoranti
+    caricaVistaAdmin();
+    return;
+  }
+
+  // 3. Se è un ristoratore, recupera il suo restaurant_id
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .select('restaurant_id, restaurant_name')
+    .eq('id', user.id)
+    .single();
+
+  if (profileError || !profile) {
+    alert("Nessun ristorante associato a questo utente.");
+    return;
+  }
+
+  const currentRestaurantId = profile.restaurant_id;
+  console.log("Ristorante caricato:", profile.restaurant_name);
+
+  // 4. Carica i dati filtrati per questo locale
+  caricaDatiRistorante(currentRestaurantId);
+}
+
+// Funzione modificata per caricare solo i dati del ristorante specifico
+async function caricaDatiRistorante(restaurantId) {
+  // Carica i tavoli di QUESTO ristorante
+  const { data: tables } = await supabase
+    .from('tables')
+    .select('*')
+    .eq('restaurant_id', restaurantId);
+
+  // Carica le prenotazioni di QUESTO ristorante
+  const { data: bookings } = await supabase
+    .from('bookings')
+    .select('*')
+    .eq('restaurant_id', restaurantId);
+
+  // Chiamate alle tue funzioni esistenti per disegnare a schermo i dati
+  // renderizzaTavoli(tables);
+  // renderizzaPrenotazioni(bookings);
+}
         // --- CONFIGURAZIONE SUPABASE ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
