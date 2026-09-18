@@ -10,239 +10,27 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
-<body class="bg-gray-100 font-sans text-gray-800">
     
-    <!-- Sezione Login (visibile all'avvio se non autenticati) -->
-    <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <div class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
-            <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
-            <input type="email" id="login-email" placeholder="Email" class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="password" id="login-password" placeholder="Password" class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button onclick="eseguiLogin()" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
-        </div>
-    </div>
-
-    <!-- CONTENITORE DELL'APP (Inizialmente nascosto finché non si effettua il login) -->
-    <div id="app-container" style="display: none;">
-
-        <!-- Header & Language Switcher -->
-        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
-            <div class="flex items-center space-x-3">
-                <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
-                <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
-            </div>
-            <div class="flex items-center space-x-4">
-                <!-- Pulsante Modalità Modifica Sala -->
-                <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
-                    <i class="fa-solid fa-arrows-up-down-left-right"></i>
-                    <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
-                </button>
-                <div class="flex bg-gray-200 rounded-lg p-1">
-                    <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
-                    <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
-                </div>
-                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
-            </div>
-        </header>
-
-        <!-- Main Container -->
-        <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-
-            <!-- Left Column: Calendar & Quick Controls -->
-            <div class="space-y-6 lg:col-span-1">
-                <div class="bg-white p-5 rounded-xl shadow-sm">
-                    <div class="flex justify-between items-center mb-4">
-                        <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
-                        <div class="space-x-1">
-                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
-                            <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
-                        </div>
-                    </div>
-                    <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
-                    <!-- Grid Calendar -->
-                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
-                        <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
-                    </div>
-                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
-                </div>
-
-                <!-- Legend -->
-                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
-                    <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
-                        <span id="leg-free">Libero / Frei</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
-                        <span id="leg-partial">Parziale / Teilweise</span>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
-                        <span id="leg-full">Completo / Voll</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right/Center Columns: Interactive Floor Plan -->
-            <div class="lg:col-span-3 space-y-6">
-                <div class="bg-white p-5 rounded-xl shadow-sm relative">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-                        <div>
-                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
-                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
-                        </div>
-                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
-                            <div class="flex items-center space-x-2">
-                                <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
-                                <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
-                                    <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
-                                    <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
-                                    <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
-                                    <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
-                                </select>
-                            </div>
-                            <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
-                            <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
-                                <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- CANVAS / AREA DELLA SALA -->
-                    <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
-                        <!-- I tavoli verranno posizionati qui dinamicamente -->
-                    </div>
-                </div>
-            </div>
-        </main>
-
-        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
-        <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
-            <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-                    <div>
-                        <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
-                        <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
-                    </div>
-                    <!-- Badge Totale Persone Attese -->
-                    <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
-                        <i class="fa-solid fa-users text-indigo-600"></i>
-                        <div>
-                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
-                            <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tabella / Lista delle prenotazioni del giorno -->
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
-                        <thead>
-                            <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
-                                <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
-                                <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
-                                <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
-                                <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
-                                <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
-                                <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
-                            </tr>
-                        </thead>
-                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
-                            <!-- Inserito dinamicamente da JavaScript -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </main>
-    </div>
-
-    <!-- Modal Prenotazione Tavolo -->
-    <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-            <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
-            <p id="modal-table-info" class="text-xs text-gray-500 mb-4">Posti: 4</p>
-
-            <div class="mb-4">
-                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
-                <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
-            </div>
-
-            <hr class="my-4 border-gray-100">
-
-            <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
-                <input type="hidden" id="form-table-id">
-                <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label id="lbl-start" class="block text-xs font-medium text-gray-600 mb-1">Dalle / Von</label>
-                        <input type="time" id="form-start-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                    </div>
-                    <div>
-                        <label id="lbl-end" class="block text-xs font-medium text-gray-600 mb-1">Fino alle / Bis</label>
-                        <input type="time" id="form-end-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                    </div>
-                </div>
-                <div>
-                    <label id="lbl-name" class="block text-xs font-medium text-gray-600 mb-1">Nome / Name</label>
-                    <input type="text" id="form-name" required placeholder="Es. Rossi" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <div>
-                        <label id="lbl-guests" class="block text-xs font-medium text-gray-600 mb-1">Persone / Personen</label>
-                        <input type="number" id="form-guests" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                    </div>
-                    <div>
-                        <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
-                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                    </div>
-                </div>
-                <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal Aggiungi Tavolo (Edit Mode) -->
-    <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
-            <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
-            <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
-            <form onsubmit="saveNewTable(event)" class="space-y-3">
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9)</label>
-                    <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Posti a sedere (Capienza)</label>
-                    <input type="number" id="new-table-seats" min="1" value="4" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Forma</label>
-                    <select id="new-table-shape" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
-                        <option value="square">Quadrato / Rettangolare</option>
-                        <option value="circle">Rotondo</option>
-                    </select>
-                </div>
-                <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition mt-2">Crea Tavolo / Erstellen</button>
-            </form>
-        </div>
-    </div>
-
+    <!-- Script spostato nell'head e strutturato per evitare errori di riferimento -->
     <script>
         // --- CONFIGURAZIONE SUPABASE & VARIABILI GLOBALI ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
 
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+        let supabaseClient = null;
         let currentRestaurantId = null;
         let currentLang = 'it';
         let currentDate = new Date();
         let tables = [];
         let bookings = [];
         let isEditMode = false;
+
+        // Inizializzazione sicura al caricamento del DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.supabase) {
+                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            }
+        });
 
         const translations = {
             it: {
@@ -330,11 +118,18 @@
         };
 
         // --- GESTIONE LOGIN & AUTENTICAZIONE ---
-        async function eseguiLogin() {
+        async function eseguiLogin(event) {
+            if (event) event.preventDefault();
+            
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+            if (!supabaseClient) {
+                alert("Supabase non è ancora pronto. Riprova tra un secondo.");
+                return;
+            }
+
+            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                 email: email,
                 password: password
             });
@@ -346,17 +141,13 @@
 
             const user = authData.user;
 
-            // Nasconde la schermata di login e mostra l'app principale
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('app-container').style.display = 'block';
 
-            // Controllo se è l'Admin principale
             if (email === 'admin@admin.com') {
-                currentRestaurantId = 'tutti'; // O gestisci la vista globale
-                console.log("Accesso come Super Admin");
+                currentRestaurantId = 'tutti';
             } else {
-                // Recupera il restaurant_id associato al ristoratore dalla tabella profiles
-                const { data: profile, error: profileError } = await supabase
+                const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('restaurant_id, restaurant_name')
                     .eq('id', user.id)
@@ -368,7 +159,6 @@
                 }
 
                 currentRestaurantId = profile.restaurant_id;
-                console.log("Ristorante caricato:", profile.restaurant_name, "(" + currentRestaurantId + ")");
             }
 
             initApp();
@@ -379,15 +169,14 @@
             await loadDataFromSupabase();
         }
 
-        // --- CARICAMENTO DATI DA SUPABASE (FILTRATI PER RESTAURANT_ID) ---
+        // --- CARICAMENTO DATI DA SUPABASE ---
         async function loadDataFromSupabase() {
-            if (!currentRestaurantId) return;
+            if (!currentRestaurantId || !supabaseClient) return;
 
             try {
-                let queryTables = supabase.from('tables').select('*');
-                let queryBookings = supabase.from('bookings').select('*');
+                let queryTables = supabaseClient.from('tables').select('*');
+                let queryBookings = supabaseClient.from('bookings').select('*');
 
-                // Se non è admin, filtra per il proprio restaurant_id
                 if (currentRestaurantId !== 'tutti') {
                     queryTables = queryTables.eq('restaurant_id', currentRestaurantId);
                     queryBookings = queryBookings.eq('restaurant_id', currentRestaurantId);
@@ -689,7 +478,8 @@
         }
 
         async function updateTableCoordinates(tableId, posX, posY) {
-            const { error } = await supabase
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient
                 .from('tables')
                 .update({ pos_x: posX, pos_y: posY })
                 .eq('id', tableId);
@@ -727,11 +517,12 @@
 
         async function saveNewTable(e) {
             e.preventDefault();
+            if (!supabaseClient) return;
             const tableNumber = document.getElementById('new-table-number').value;
             const seats = parseInt(document.getElementById('new-table-seats').value);
             const shape = document.getElementById('new-table-shape').value;
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('tables')
                 .insert([{
                     table_number: tableNumber,
@@ -789,6 +580,7 @@
 
         async function saveBooking(event) {
             event.preventDefault();
+            if (!supabaseClient) return;
             const tableId = document.getElementById('form-table-id').value;
             const startTime = document.getElementById('form-start-time').value;
             const endTime = document.getElementById('form-end-time').value;
@@ -813,7 +605,7 @@
                 return;
             }
 
-            const { error } = await supabase
+            const { error } = await supabaseClient
                 .from('bookings')
                 .insert([{
                     table_id: tableId,
@@ -837,7 +629,8 @@
         }
 
         async function deleteBooking(bookingId) {
-            const { error } = await supabase
+            if (!supabaseClient) return;
+            const { error } = await supabaseClient
                 .from('bookings')
                 .delete()
                 .eq('id', bookingId);
@@ -852,5 +645,224 @@
             renderDailySummary();
         }
     </script>
+</head>
+<body class="bg-gray-100 font-sans text-gray-800">
+    
+    <!-- Sezione Login racchiusa in un form per eliminare il warning della password -->
+    <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
+        <form onsubmit="eseguiLogin(event)" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
+            <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
+            <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="password" id="login-password" placeholder="Password" required class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
+        </form>
+    </div>
+
+    <!-- CONTENITORE DELL'APP (Inizialmente nascosto) -->
+    <div id="app-container" style="display: none;">
+
+        <!-- Header & Language Switcher -->
+        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
+            <div class="flex items-center space-x-3">
+                <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
+                <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
+            </div>
+            <div class="flex items-center space-x-4">
+                <!-- Pulsante Modalità Modifica Sala -->
+                <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                    <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
+                </button>
+                <div class="flex bg-gray-200 rounded-lg p-1">
+                    <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
+                    <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
+                </div>
+                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
+            </div>
+        </header>
+
+        <!-- Main Container -->
+        <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+            <!-- Left Column: Calendar & Quick Controls -->
+            <div class="space-y-6 lg:col-span-1">
+                <div class="bg-white p-5 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
+                        <div class="space-x-1">
+                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
+                    <!-- Grid Calendar -->
+                    <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
+                        <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
+                    </div>
+                    <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
+                </div>
+
+                <!-- Legend -->
+                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
+                    <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
+                        <span id="leg-free">Libero / Frei</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
+                        <span id="leg-partial">Parziale / Teilweise</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
+                        <span id="leg-full">Completo / Voll</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right/Center Columns: Interactive Floor Plan -->
+            <div class="lg:col-span-3 space-y-6">
+                <div class="bg-white p-5 rounded-xl shadow-sm relative">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
+                        <div>
+                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
+                        </div>
+                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
+                            <div class="flex items-center space-x-2">
+                                <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
+                                <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
+                                    <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
+                                    <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
+                                    <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
+                                    <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
+                                </select>
+                            </div>
+                            <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
+                            <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                                <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- CANVAS / AREA DELLA SALA -->
+                    <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+                        <!-- I tavoli verranno posizionati qui dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
+        <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
+            <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                    <div>
+                        <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
+                        <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
+                    </div>
+                    <!-- Badge Totale Persone Attese -->
+                    <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
+                        <i class="fa-solid fa-users text-indigo-600"></i>
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                            <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabella / Lista delle prenotazioni del giorno -->
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse text-xs">
+                        <thead>
+                            <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                                <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
+                                <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
+                                <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
+                                <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
+                                <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
+                                <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
+                            <!-- Inserito dinamicamente da JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Prenotazione Tavolo -->
+    <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
+            <p id="modal-table-info" class="text-xs text-gray-500 mb-4">Posti: 4</p>
+
+            <div class="mb-4">
+                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
+                <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
+            </div>
+
+            <hr class="my-4 border-gray-100">
+
+            <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
+                <input type="hidden" id="form-table-id">
+                <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-start" class="block text-xs font-medium text-gray-600 mb-1">Dalle / Von</label>
+                        <input type="time" id="form-start-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-end" class="block text-xs font-medium text-gray-600 mb-1">Fino alle / Bis</label>
+                        <input type="time" id="form-end-time" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label id="lbl-name" class="block text-xs font-medium text-gray-600 mb-1">Nome / Name</label>
+                    <input type="text" id="form-name" required placeholder="Es. Rossi" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label id="lbl-guests" class="block text-xs font-medium text-gray-600 mb-1">Persone / Personen</label>
+                        <input type="number" id="form-guests" min="1" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                    <div>
+                        <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
+                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                    </div>
+                </div>
+                <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal Aggiungi Tavolo (Edit Mode) -->
+    <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
+            <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
+            <form onsubmit="saveNewTable(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9)</label>
+                    <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Posti a sedere (Capienza)</label>
+                    <input type="number" id="new-table-seats" min="1" value="4" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Forma</label>
+                    <select id="new-table-shape" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        <option value="square">Quadrato / Rettangolare</option>
+                        <option value="circle">Rotondo</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition mt-2">Crea Tavolo / Erstellen</button>
+            </form>
+        </div>
+    </div>
 </body>
 </html>
