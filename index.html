@@ -549,14 +549,17 @@
                 }
             });
         }
+async function updateTableCoordinates(tableId, posX, posY) {
+            const { error } = await supabaseClient
+                .from('tables')
+                .update({ pos_x: posX, pos_y: posY })
+                .eq('id', tableId);
 
-        async function updateTableCoordinates(tableId, x, y) {
-    try {
-        const response = await fetch(`/api/tables/${tableId}`, {
-            method: 'PATCH', // o PUT
-            headers: {
-                'Content-Type': 'application/json',
-                // eventuale token CSRF o di autenticazione se necessario
+            if (error) {
+                console.error("Errore salvataggio posizione:", error.message);
+            }
+        }
+        
             },
             body: JSON.stringify({ x: x, y: y })
         });
