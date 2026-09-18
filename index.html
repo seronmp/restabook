@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartTable - Booking & Tables</title>
+    <title>SmartTable - Pianta Dinamica & Booking</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
@@ -14,25 +14,30 @@
 <body class="bg-gray-100 font-sans text-gray-800">
 
     <!-- Header & Language Switcher -->
-    <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center">
+    <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
         <div class="flex items-center space-x-3">
             <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
             <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
         </div>
         <div class="flex items-center space-x-4">
+            <!-- Pulsante Modalità Modifica Sala -->
+            <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
+            </button>
             <div class="flex bg-gray-200 rounded-lg p-1">
                 <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
                 <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
             </div>
-            <div id="current-date-display" class="text-sm font-semibold text-gray-600"></div>
+            <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
         </div>
     </header>
 
     <!-- Main Container -->
-    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        <!-- Left Column: Calendar & Quick Controls -->
-        <div class="space-y-6">
+        <!-- Left Column: Calendar & Quick Controls (1 colonna su 4) -->
+        <div class="space-y-6 lg:col-span-1">
             <div class="bg-white p-5 rounded-xl shadow-sm">
                 <div class="flex justify-between items-center mb-4">
                     <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
@@ -44,21 +49,21 @@
                 <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
                 <!-- Grid Calendar -->
                 <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
-                    <span id="day-mo">Lun</span><span id="day-tu">Mar</span><span id="day-we">Mer</span><span id="day-th">Gio</span><span id="day-fr">Ven</span><span id="day-sa">Sab</span><span id="day-su">Dom</span>
+                    <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
                 </div>
                 <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
             </div>
 
             <!-- Legend -->
             <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
-                <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli / Legende Tische:</div>
+                <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
                     <span id="leg-free">Libero / Frei</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
-                    <span id="leg-partial">Parzialmente occupato / Teilweise besetzt</span>
+                    <span id="leg-partial">Parziale / Teilweise</span>
                 </div>
                 <div class="flex items-center space-x-2">
                     <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
@@ -67,51 +72,53 @@
             </div>
         </div>
 
-        <!-- Right/Center Columns: Table Floor Plan & Status -->
-        <div class="lg:col-span-2 space-y-6">
-            <div class="bg-white p-5 rounded-xl shadow-sm">
-                <div class="flex justify-between items-center mb-6">
+        <!-- Right/Center Columns: Interactive Floor Plan (3 colonne su 4) -->
+        <div class="lg:col-span-3 space-y-6">
+            <div class="bg-white p-5 rounded-xl shadow-sm relative">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                     <div>
-                        <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Tavoli</h2>
-                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per visualizzare le prenotazioni o aggiungere una nuova.</p>
+                        <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
+                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali dove preferisci.</p>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia oraria:</label>
-                        <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-sm p-1.5 bg-gray-50">
-                            <option value="all">Tutta la giornata / Ganztägig</option>
-                            <option value="12:00-15:00">Pranzo (12:00 - 15:00)</option>
-                            <option value="18:00-21:00">Cena 1 (18:00 - 21:00)</option>
-                            <option value="21:00-23:30">Cena 2 (21:00 - 23:30)</option>
-                        </select>
+                    <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
+                        <div class="flex items-center space-x-2">
+                            <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
+                            <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
+                                <option value="all">Tutta la giornata / Ganztägig</option>
+                                <option value="12:00-15:00">Pranzo (12-15)</option>
+                                <option value="18:00-21:00">Cena 1 (18-21)</option>
+                                <option value="21:00-23:30">Cena 2 (21-23:30)</option>
+                            </select>
+                        </div>
+                        <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
+                        <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                            <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Tables Grid (Interactive Floor Plan) -->
-                <div id="tables-container" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    <!-- Dinamicamente popolato via JS -->
+                <!-- CANVAS / AREA DELLA SALA -->
+                <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
+                    <!-- I tavoli verranno posizionati qui in assoluto in base a pos_x e pos_y -->
                 </div>
             </div>
         </div>
     </main>
 
-    <!-- Modal Gestione Tavolo / Prenotazione -->
+    <!-- Modal Prenotazione Tavolo -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
             <p id="modal-table-info" class="text-xs text-gray-500 mb-4">Posti: 4</p>
 
-            <!-- Lista prenotazioni esistenti per il tavolo nella data -->
             <div class="mb-4">
                 <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
-                <div id="modal-bookings-list" class="space-y-2 max-h-36 overflow-y-auto pr-1">
-                    <!-- Inserite dinamicamente -->
-                </div>
+                <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
             </div>
 
             <hr class="my-4 border-gray-100">
 
-            <!-- Form nuova prenotazione -->
             <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
                 <input type="hidden" id="form-table-id">
                 <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
@@ -144,6 +151,32 @@
         </div>
     </div>
 
+    <!-- Modal Aggiungi/Modifica Tavolo (Edit Mode) -->
+    <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
+            <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
+            <form onsubmit="saveNewTable(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9 o Terrazza 1)</label>
+                    <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Posti a sedere (Capienza)</label>
+                    <input type="number" id="new-table-seats" min="1" value="4" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Forma</label>
+                    <select id="new-table-shape" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        <option value="square">Quadrato / Rettangolare</option>
+                        <option value="circle">Rotondo</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition mt-2">Crea Tavolo / Erstellen</button>
+            </form>
+        </div>
+    </div>
+
     <script>
         // --- CONFIGURAZIONE SUPABASE ---
         const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
@@ -152,56 +185,59 @@
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-        // Dizionario Bilingue IT / DE
         const translations = {
             it: {
                 title: "SmartTable Manager",
                 calendar: "Calendario",
-                floorTitle: "Pianta Tavoli",
-                floorSubtitle: "Clicca su un tavolo per gestire le prenotazioni o aggiungere slot orari.",
-                timeFilter: "Fascia oraria:",
-                allDay: "Tutta la giornata",
+                floorTitle: "Pianta Interattiva della Sala",
+                floorSubtitle: "Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.",
+                timeFilter: "Fascia:",
                 legendTitle: "Legenda Tavoli:",
                 free: "Libero",
-                partial: "Parzialmente occupato",
+                partial: "Parziale",
                 full: "Completo",
                 modalTitle: "Prenotazioni Tavolo",
-                existingTitle: "Orari già riservati per questa data:",
-                formTitle: "Aggiungi nuova prenotazione",
-                lblStart: "Dalle (Ora inizio)",
-                lblEnd: "Fino alle (Ora fine)",
+                existingTitle: "Orari già riservati:",
+                formTitle: "Nuova prenotazione",
+                lblStart: "Dalle",
+                lblEnd: "Fino alle",
                 lblName: "Nome Cliente",
                 lblGuests: "Persone",
                 lblPhone: "Telefono",
                 btnSave: "Salva Prenotazione",
                 seats: "Posti",
-                noBookings: "Nessuna prenotazione per oggi.",
-                errCapacity: "Il numero di ospiti supera la capienza massima di questo tavolo (max posti: ",
+                noBookings: "Nessuna prenotazione oggi.",
+                editModeOn: "Salva Posizioni (Fine Modifica)",
+                editModeOff: "Modifica Sala / Raum bearbeiten",
+                newTable: "Nuovo Tavolo",
+                errCapacity: "Il numero di ospiti supera la capienza di questo tavolo (max posti: ",
                 errOverlap: "Attenzione: questo tavolo è già occupato nell'orario selezionato!"
             },
             de: {
                 title: "SmartTable Manager",
                 calendar: "Kalender",
-                floorTitle: "Tischplan",
-                floorSubtitle: "Klicken Sie auf einen Tisch, um Reservierungen zu verwalten.",
+                floorTitle: "Interaktiver Tischplan",
+                floorSubtitle: "Klicken Sie auf einen Tisch zum Reservieren. Im Bearbeitungsmodus frei verschiebbar.",
                 timeFilter: "Zeitfenster:",
-                allDay: "Ganztägig",
                 legendTitle: "Tisch-Legende:",
                 free: "Frei",
-                partial: "Teilweise besetzt",
-                full: "Voll besetzt",
+                partial: "Teilweise",
+                full: "Voll",
                 modalTitle: "Tisch-Reservierungen",
                 existingTitle: "Bereits reservierte Zeiten:",
-                formTitle: "Neue Reservierung hinzufügen",
-                lblStart: "Von (Beginn)",
-                lblEnd: "Bis (Ende)",
+                formTitle: "Neue Reservierung",
+                lblStart: "Von",
+                lblEnd: "Bis",
                 lblName: "Kundenname",
                 lblGuests: "Personen",
                 lblPhone: "Telefon",
                 btnSave: "Reservierung speichern",
                 seats: "Plätze",
-                noBookings: "Keine Reservierungen für heute.",
-                errCapacity: "Die Anzahl der Gäste überschreitet die Kapazität dieses Tisches (max. Plätze: ",
+                noBookings: "Keine Reservierungen.",
+                editModeOn: "Positionen speichern (Fertig)",
+                editModeOff: "Raum bearbeiten",
+                newTable: "Neuer Tisch",
+                errCapacity: "Die Anzahl der Gäste überschreitet die Kapazität (max. Plätze: ",
                 errOverlap: "Achtung: Dieser Tisch ist zur gewählten Zeit bereits belegt!"
             }
         };
@@ -210,6 +246,7 @@
         let currentDate = new Date();
         let tables = [];
         let bookings = [];
+        let isEditMode = false;
 
         async function initApp() {
             setLanguage('it');
@@ -247,7 +284,7 @@
                 renderCalendar();
                 renderTables();
             } catch (err) {
-                console.error("Errore di caricamento da Supabase:", err.message);
+                console.error("Errore caricamento Supabase:", err.message);
             }
         }
 
@@ -274,6 +311,14 @@
             document.getElementById('lbl-guests').innerText = t.lblGuests;
             document.getElementById('lbl-phone').innerText = t.lblPhone;
             document.getElementById('btn-save').innerText = t.btnSave;
+            document.getElementById('txt-add-table').innerText = t.newTable;
+
+            const editTxtSpan = document.getElementById('txt-edit-mode');
+            if (isEditMode) {
+                editTxtSpan.innerText = t.editModeOn;
+            } else {
+                editTxtSpan.innerText = t.editModeOff;
+            }
 
             renderCalendar();
             renderTables();
@@ -289,9 +334,8 @@
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
-            
-            const monthsIt = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
-            const monthsDe = ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"];
+            const monthsIt = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
+            const monthsDe = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
             
             document.getElementById('month-year-label').innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
             document.getElementById('current-date-display').innerText = currentDate.toLocaleDateString(currentLang === 'it' ? 'it-IT' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
@@ -313,7 +357,7 @@
                 const isSelected = dateStr === selectedStr;
                 const hasBookings = bookings.some(b => b.date === dateStr);
 
-                let btnClass = "h-9 w-9 mx-auto rounded-full flex items-center justify-center text-sm font-medium transition cursor-pointer relative ";
+                let btnClass = "h-8 w-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium transition cursor-pointer relative ";
                 if (isSelected) {
                     btnClass += "bg-indigo-600 text-white shadow-md";
                 } else {
@@ -342,9 +386,10 @@
             renderCalendar();
         }
 
+        // --- RENDER DEI TAVOLI SULLA MAPPA INTERATTIVA ---
         function renderTables() {
-            const container = document.getElementById('tables-container');
-            container.innerHTML = '';
+            const canvas = document.getElementById('floor-canvas');
+            canvas.innerHTML = '';
             const currentDateStr = formatDateKey(currentDate);
             const timeFilter = document.getElementById('filter-time').value;
 
@@ -356,36 +401,161 @@
                     tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
                 }
 
-                let statusColor = "bg-emerald-50 border-emerald-200 text-emerald-800";
+                let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
                 let badgeColor = "bg-emerald-500";
                 let statusText = translations[currentLang].free;
 
                 if (tableBookings.length > 0 && timeFilter === 'all') {
-                    statusColor = "bg-amber-50 border-amber-200 text-amber-900";
+                    statusColor = "bg-amber-50 border-amber-300 text-amber-900";
                     badgeColor = "bg-amber-500";
-                    statusText = `${tableBookings.length} ${currentLang === 'it' ? 'riservazioni' : 'Reservierungen'}`;
+                    statusText = `${tableBookings.length} ris.`;
                 } else if (tableBookings.length > 0) {
-                    statusColor = "bg-rose-50 border-rose-200 text-rose-900";
+                    statusColor = "bg-rose-50 border-rose-300 text-rose-900";
                     badgeColor = "bg-rose-500";
                     statusText = translations[currentLang].full;
                 }
 
-                container.innerHTML += `
-                    <div onclick="openTableModal('${table.id}')" class="border ${statusColor} rounded-xl p-4 flex flex-col justify-between cursor-pointer hover:shadow-md transition">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <span class="text-xs uppercase tracking-wider font-bold opacity-60">Tavolo / Tisch</span>
-                                <h3 class="text-2xl font-black">${table.table_number}</h3>
-                            </div>
-                            <span class="w-3 h-3 ${badgeColor} rounded-full inline-block"></span>
-                        </div>
-                        <div class="mt-4">
-                            <div class="text-xs font-medium"><i class="fa-solid fa-user-group mr-1"></i> ${table.seats} ${translations[currentLang].seats}</div>
-                            <div class="text-xs mt-1 font-semibold">${statusText}</div>
-                        </div>
+                // Forma rotonda o quadrata
+                const shapeClass = table.shape === 'circle' ? 'rounded-full aspect-square' : 'rounded-xl';
+
+                // Coordinate predefinite se non impostate
+                const posX = table.pos_x ?? 50;
+                const posY = table.pos_y ?? 50;
+
+                const tableEl = document.createElement('div');
+                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md w-28 h-28`;
+                tableEl.style.left = `${posX}px`;
+                tableEl.style.top = `${posY}px`;
+                tableEl.dataset.id = table.id;
+
+                tableEl.innerHTML = `
+                    <div class="flex justify-between items-start pointer-events-none">
+                        <span class="text-xs font-black opacity-70">T-${table.table_number}</span>
+                        <span class="w-2.5 h-2.5 ${badgeColor} rounded-full inline-block"></span>
                     </div>
+                    <div class="text-center pointer-events-none my-auto">
+                        <h3 class="text-lg font-black">${table.table_number}</h3>
+                        <div class="text-[10px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
+                    </div>
+                    <div class="text-[10px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
                 `;
+
+                // Gestione Click o Apertura Modale
+                tableEl.addEventListener('click', (e) => {
+                    if (!isEditMode) {
+                        openTableModal(table.id);
+                    }
+                });
+
+                // --- GESTIONE DRAG AND DROP (MODALITÀ MODIFICA) ---
+                if (isEditMode) {
+                    tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-2');
+                    enableDrag(tableEl, table.id);
+                }
+
+                canvas.appendChild(tableEl);
             });
+        }
+
+        // --- DRAG AND DROP LOGIC ---
+        function enableDrag(element, tableId) {
+            let isDragging = false;
+            let startX, startY;
+
+            element.addEventListener('mousedown', (e) => {
+                if (!isEditMode) return;
+                isDragging = true;
+                startX = e.clientX - element.offsetLeft;
+                startY = e.clientY - element.offsetTop;
+                element.style.zIndex = 1000;
+                e.stopPropagation();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging || !isEditMode) return;
+                const canvasRect = document.getElementById('floor-canvas').getBoundingClientRect();
+                
+                let newX = e.clientX - startX;
+                let newY = e.clientY - startY;
+
+                // Limiti all'interno del canvas
+                newX = Math.max(0, Math.min(newX, canvasRect.width - 110));
+                newY = Math.max(0, Math.min(newY, canvasRect.height - 110));
+
+                element.style.left = `${newX}px`;
+                element.style.top = `${newY}px`;
+            });
+
+            document.addEventListener('mouseup', async () => {
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.zIndex = 1;
+                    // Salva la nuova posizione su Supabase
+                    const newX = parseInt(element.style.left);
+                    const newY = parseInt(element.style.top);
+                    await updateTableCoordinates(tableId, newX, newY);
+                }
+            });
+        }
+
+        async function updateTableCoordinates(tableId, posX, posY) {
+            await supabaseClient
+                .from('tables')
+                .update({ pos_x: posX, pos_y: posY })
+                .eq('id', tableId);
+        }
+
+        // Attiva/Disattiva Edit Mode
+        function toggleEditMode() {
+            isEditMode = !isEditMode;
+            const btnEdit = document.getElementById('btn-toggle-edit');
+            const btnAddTable = document.getElementById('btn-add-table');
+            const t = translations[currentLang];
+
+            if (isEditMode) {
+                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm transition flex items-center space-x-1.5";
+                document.getElementById('txt-edit-mode').innerText = t.editModeOn;
+                btnAddTable.classList.remove('hidden');
+            } else {
+                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5";
+                document.getElementById('txt-edit-mode').innerText = t.editModeOff;
+                btnAddTable.classList.add('hidden');
+            }
+            renderTables();
+        }
+
+        function openAddTableModal() {
+            document.getElementById('table-config-modal').classList.remove('hidden');
+        }
+
+        function closeTableConfigModal() {
+            document.getElementById('table-config-modal').classList.add('hidden');
+        }
+
+        async function saveNewTable(e) {
+            e.preventDefault();
+            const tableNumber = document.getElementById('new-table-number').value;
+            const seats = parseInt(document.getElementById('new-table-seats').value);
+            const shape = document.getElementById('new-table-shape').value;
+
+            const { error } = await supabaseClient
+                .from('tables')
+                .insert([{
+                    table_number: tableNumber,
+                    seats: seats,
+                    shape: shape,
+                    pos_x: 50,
+                    pos_y: 50,
+                    restaurant_id: RESTAURANT_ID
+                }]);
+
+            if (error) {
+                alert("Errore nella creazione del tavolo: " + error.message);
+                return;
+            }
+
+            closeTableConfigModal();
+            await loadDataFromSupabase();
         }
 
         function openTableModal(tableId) {
@@ -423,7 +593,6 @@
             document.getElementById('booking-modal').classList.add('hidden');
         }
 
-        // Salva la prenotazione con controlli di capienza e sovrapposizione oraria
         async function saveBooking(event) {
             event.preventDefault();
             const tableId = document.getElementById('form-table-id').value;
@@ -434,46 +603,37 @@
             const phone = document.getElementById('form-phone').value;
             const dateStr = formatDateKey(currentDate);
 
-            // Trova il tavolo selezionato per controllare i posti a sedere
             const table = tables.find(t => t.id === tableId);
             const t = translations[currentLang];
 
-            // CONTROLLO 1: Capienza ospiti
             if (guests > table.seats) {
                 alert(t.errCapacity + table.seats + ")");
                 return;
             }
 
-            // CONTROLLO 2: Sovrapposizione orari sullo stesso tavolo nella stessa data
-            // Due fasce (StartA-EndA) e (StartB-EndB) si sovrappongono se: StartA < EndB AND EndA > StartB
             const existingTableBookings = bookings.filter(b => b.tableId === tableId && b.date === dateStr);
-            const hasOverlap = existingTableBookings.some(b => {
-                return startTime < b.endTime && endTime > b.startTime;
-            });
+            const hasOverlap = existingTableBookings.some(b => startTime < b.endTime && endTime > b.startTime);
 
             if (hasOverlap) {
                 alert(t.errOverlap);
                 return;
             }
 
-            const newBookingPayload = {
-                table_id: tableId,
-                date: dateStr,
-                start_time: startTime,
-                end_time: endTime,
-                name: name,
-                guests: guests,
-                phone: phone,
-                restaurant_id: RESTAURANT_ID
-            };
-
-            const { data, error } = await supabaseClient
+            const { error } = await supabaseClient
                 .from('bookings')
-                .insert([newBookingPayload])
-                .select();
+                .insert([{
+                    table_id: tableId,
+                    date: dateStr,
+                    start_time: startTime,
+                    end_time: endTime,
+                    name: name,
+                    guests: guests,
+                    phone: phone,
+                    restaurant_id: RESTAURANT_ID
+                }]);
 
             if (error) {
-                alert("Errore durante il salvataggio: " + error.message);
+                alert("Errore salvataggio: " + error.message);
                 return;
             }
 
@@ -489,7 +649,7 @@
                 .eq('id', bookingId);
 
             if (error) {
-                alert("Errore durante la cancellazione: " + error.message);
+                alert("Errore cancellazione: " + error.message);
                 return;
             }
 
