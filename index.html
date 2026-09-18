@@ -505,6 +505,16 @@
 
                 element.style.left = `${newX}px`;
                 element.style.top = `${newY}px`;
+                
+                // 1. Aggiorna l'oggetto in memoria se hai un array di tavoli (es. tables)
+                    const tableObj = tables.find(t => t.id === tableId);
+                    if (tableObj) {
+                        tableObj.x = newX;
+                        tableObj.y = newY;
+                    }
+
+                    // 2. Salva sul database
+                    await updateTableCoordinates(tableId, newX, newY);
             });
 
             document.addEventListener('mouseup', async () => {
