@@ -517,16 +517,27 @@
                     await updateTableCoordinates(tableId, newX, newY);
             });
 
+        // --- DRAG AND DROP CORRETTO ---
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
                     element.style.zIndex = 1;
+                    
                     const newX = parseInt(element.style.left);
                     const newY = parseInt(element.style.top);
+
+                    // Aggiorna lo stato locale in memoria
+                    const tableObj = tables.find(t => t.id === tableId);
+                    if (tableObj) {
+                        tableObj.pos_x = newX;
+                        tableObj.pos_y = newY;
+                    }
+
+                    // Salva su Supabase
                     await updateTableCoordinates(tableId, newX, newY);
                 }
             });
-     
+             
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
