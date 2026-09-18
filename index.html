@@ -84,11 +84,11 @@
                         <div class="flex items-center space-x-2">
                             <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
                             <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
-                            <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
-                            <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
-                            <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
-                            <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
-                        </select>
+                                <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
+                                <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
+                                <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
+                                <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
+                            </select>
                         </div>
                         <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
                         <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
@@ -150,42 +150,45 @@
             </form>
         </div>
     </div>
-<!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
-    <div class="bg-white p-5 rounded-xl shadow-sm mt-6">
-        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
-            <div>
-                <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
-                <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
-            </div>
-            <!-- Badge Totale Persone Attese -->
-            <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
-                <i class="fa-solid fa-users text-indigo-600"></i>
+
+    <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
+    <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
+        <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
-                    <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                    <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
+                    <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
+                </div>
+                <!-- Badge Totale Persone Attese -->
+                <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
+                    <i class="fa-solid fa-users text-indigo-600"></i>
+                    <div>
+                        <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                        <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Tabella / Lista delle prenotazioni del giorno -->
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
-                        <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
-                        <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
-                        <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
-                        <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
-                        <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
-                        <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
-                    </tr>
-                </thead>
-                <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
-                    <!-- Inserito dinamicamente da JavaScript -->
-                </tbody>
-            </table>
+            <!-- Tabella / Lista delle prenotazioni del giorno -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                            <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
+                            <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
+                            <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
+                            <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
+                            <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
+                            <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
+                        </tr>
+                    </thead>
+                    <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
+                        <!-- Inserito dinamicamente da JavaScript -->
+                    </tbody>
+                </table>
+            </div>
         </div>
-    </div>
+    </main>
     
     <!-- Modal Aggiungi Tavolo (Edit Mode) -->
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
@@ -258,9 +261,10 @@
                 thPhone: "Telefono",
                 thActions: "Azioni",
                 noDailyBookings: "Nessuna prenotazione registrata per questa data.",
-                timeFilterAll: "Tutta la giornata / Ganztägig",
-                timeFilterLunch: "Pranzo",
-                timeFilterDinner: "Cena"
+                timeFilterAll: "Tutta la giornata",
+                timeFilterLunch: "Pranzo (12-15)",
+                timeFilterDinner1: "Cena 1 (18-21)",
+                timeFilterDinner2: "Cena 2 (21-23:30)"
             },
             de: {
                 title: "SmartTable Manager",
@@ -297,10 +301,11 @@
                 thGuests: "Personen",
                 thPhone: "Telefon",
                 thActions: "Aktion",
-                noDailyBookings: "Keine Reservierungen für dieses Datum."
-                timeFilterAll: "Ganztägig / Tutta la giornata",
-                timeFilterLunch: "Mittagessen",
-                timeFilterDinner: "Abendessen"
+                noDailyBookings: "Keine Reservierungen für dieses Datum.",
+                timeFilterAll: "Ganztägig",
+                timeFilterLunch: "Mittagessen (12-15)",
+                timeFilterDinner1: "Abendessen 1 (18-21)",
+                timeFilterDinner2: "Abendessen 2 (21-23:30)"
             }
         };
 
@@ -355,12 +360,15 @@
             currentLang = lang;
             document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
             document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            document.getElementById('opt-all').innerText = currentLang === 'it' ? "Tutta la giornata" : "Ganztägig";
-            document.getElementById('opt-lunch').innerText = currentLang === 'it' ? "Pranzo (12-15)" : "Mittagessen (12-15)";
-            document.getElementById('opt-dinner1').innerText = currentLang === 'it' ? "Cena 1 (18-21)" : "Abendessen 1 (18-21)";
-            document.getElementById('opt-dinner2').innerText = currentLang === 'it' ? "Cena 2 (21-23:30)" : "Abendessen 2 (21-23:30)";
-                        
+            
             const t = translations[lang];
+            
+            // Traduzione opzioni menu a tendina orari
+            document.getElementById('opt-all').innerText = t.timeFilterAll;
+            document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
+            document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
+            document.getElementById('opt-dinner2').innerText = t.timeFilterDinner2;
+                        
             document.getElementById('app-title').innerText = t.title;
             document.getElementById('calendar-title').innerText = t.calendar;
             document.getElementById('floor-title').innerText = t.floorTitle;
@@ -463,13 +471,12 @@
             renderCalendar();
         }
 
-      function renderDailySummary() {
+        function renderDailySummary() {
             const currentDateStr = formatDateKey(currentDate);
             const tbody = document.getElementById('daily-summary-list');
             const totalCountEl = document.getElementById('total-guests-count');
             const t = translations[currentLang];
 
-            // Filtra le prenotazioni del giorno corrente e ordinacele per orario
             const dayBookings = bookings
                 .filter(b => b.date === currentDateStr)
                 .sort((a, b) => a.startTime.localeCompare(b.startTime));
@@ -506,7 +513,7 @@
 
             totalCountEl.innerText = totalGuests;
         }
-        // --- RENDER DEI TAVOLI CON DIMENSIONI DINAMICHE IN BASE AI POSTI ---
+
         function renderTables() {
             const canvas = document.getElementById('floor-canvas');
             canvas.innerHTML = '';
@@ -535,7 +542,6 @@
                     statusText = translations[currentLang].full;
                 }
 
-                // Calcolo dimensioni dinamiche basate sui posti (seats)
                 let width = 110;
                 let height = 110;
                 
@@ -590,7 +596,6 @@
             });
         }
 
-      // --- DRAG AND DROP SEMPLIFICATO (TEST) ---
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
@@ -626,11 +631,11 @@
                     const newX = parseInt(element.style.left);
                     const newY = parseInt(element.style.top);
 
-                    // Aggiorna solo in memoria per testare fluidità e dimensioni
                     const tableObj = tables.find(t => t.id === tableId);
                     if (tableObj) {
                         tableObj.pos_x = newX;
                         tableObj.pos_y = newY;
+                        updateTableCoordinates(tableId, newX, newY);
                     }
                 }
             });
