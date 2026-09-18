@@ -150,7 +150,43 @@
             </form>
         </div>
     </div>
+<!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE & PERSONE ATTESE -->
+    <div class="bg-white p-5 rounded-xl shadow-sm mt-6">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+            <div>
+                <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
+                <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
+            </div>
+            <!-- Badge Totale Persone Attese -->
+            <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
+                <i class="fa-solid fa-users text-indigo-600"></i>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                    <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                </div>
+            </div>
+        </div>
 
+        <!-- Tabella / Lista delle prenotazioni del giorno -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-xs">
+                <thead>
+                    <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                        <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
+                        <th class="py-2 px-3 font-semibold" id="th-table">Tavolo</th>
+                        <th class="py-2 px-3 font-semibold" id="th-name">Cliente</th>
+                        <th class="py-2 px-3 font-semibold" id="th-guests">Persone</th>
+                        <th class="py-2 px-3 font-semibold" id="th-phone">Telefono</th>
+                        <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
+                    <!-- Inserito dinamicamente da JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
     <!-- Modal Aggiungi Tavolo (Edit Mode) -->
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
