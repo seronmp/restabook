@@ -518,6 +518,7 @@
             });
 
         // --- DRAG AND DROP CORRETTO ---
+           // --- DRAG AND DROP CORRETTO E ASINCRONO ---
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
@@ -532,6 +533,11 @@
                         tableObj.pos_x = newX;
                         tableObj.pos_y = newY;
                     }
+
+                    // Salva su Supabase (ora l'await è dentro una funzione 'async')
+                    await updateTableCoordinates(tableId, newX, newY);
+                }
+            });
 
                     // Salva su Supabase
                     await updateTableCoordinates(tableId, newX, newY);
