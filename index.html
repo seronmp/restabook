@@ -226,6 +226,31 @@
     </div>
 
     <script>
+// 1. Inizializzazione del client Supabase (inserisci i tuoi dati reali)
+const SUPABASE_URL = 'INSERISCI_IL_TUO_URL';
+const SUPABASE_ANON_KEY = 'INSERISCI_LA_TUA_ANON_KEY';
+
+// Questo crea l'oggetto 'supabase' che ora risponderà correttamente
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// 2. Subito sotto, lasci la tua funzione che adesso funzionerà senza errori
+async function eseguiLogin() {
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    email: email,
+    password: password
+  });
+
+  if (authError) {
+    alert("Errore di login: " + authError.message);
+    return;
+  }
+
+  const user = authData.user;
+}
+        
         // Funzione richiamata dal bottone "Accedi"
 async function eseguiLogin() {
   const email = document.getElementById('login-email').value;
