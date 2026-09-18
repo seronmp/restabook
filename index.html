@@ -539,12 +539,24 @@
             });
         }
 
-        async function updateTableCoordinates(tableId, posX, posY) {
-            await supabaseClient
-                .from('tables')
-                .update({ pos_x: posX, pos_y: posY })
-                .eq('id', tableId);
+        async function updateTableCoordinates(tableId, x, y) {
+    try {
+        const response = await fetch(`/api/tables/${tableId}`, {
+            method: 'PATCH', // o PUT
+            headers: {
+                'Content-Type': 'application/json',
+                // eventuale token CSRF o di autenticazione se necessario
+            },
+            body: JSON.stringify({ x: x, y: y })
+        });
+        
+        if (!response.ok) {
+            console.error('Errore durante il salvataggio della posizione');
         }
+    } catch (error) {
+        console.error('Errore di rete:', error);
+    }
+}
 
         // Attiva/Disattiva Edit Mode
         function toggleEditMode() {
