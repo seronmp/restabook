@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SmartTable - Pianta Dinamica & Booking</title>
-    <!-- Tailwind CSS -->
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -36,7 +36,7 @@
     <!-- Main Container -->
     <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-        <!-- Left Column: Calendar & Quick Controls (1 colonna su 4) -->
+        <!-- Left Column: Calendar & Quick Controls -->
         <div class="space-y-6 lg:col-span-1">
             <div class="bg-white p-5 rounded-xl shadow-sm">
                 <div class="flex justify-between items-center mb-4">
@@ -72,13 +72,13 @@
             </div>
         </div>
 
-        <!-- Right/Center Columns: Interactive Floor Plan (3 colonne su 4) -->
+        <!-- Right/Center Columns: Interactive Floor Plan -->
         <div class="lg:col-span-3 space-y-6">
             <div class="bg-white p-5 rounded-xl shadow-sm relative">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                     <div>
                         <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
-                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali dove preferisci.</p>
+                        <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali liberamente.</p>
                     </div>
                     <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
                         <div class="flex items-center space-x-2">
@@ -99,7 +99,7 @@
 
                 <!-- CANVAS / AREA DELLA SALA -->
                 <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner">
-                    <!-- I tavoli verranno posizionati qui in assoluto in base a pos_x e pos_y -->
+                    <!-- I tavoli verranno posizionati qui dinamicamente -->
                 </div>
             </div>
         </div>
@@ -151,14 +151,14 @@
         </div>
     </div>
 
-    <!-- Modal Aggiungi/Modifica Tavolo (Edit Mode) -->
+    <!-- Modal Aggiungi Tavolo (Edit Mode) -->
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
             <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
             <form onsubmit="saveNewTable(event)" class="space-y-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9 o Terrazza 1)</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9)</label>
                     <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                 </div>
                 <div>
@@ -179,8 +179,8 @@
 
     <script>
         // --- CONFIGURAZIONE SUPABASE ---
-        const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const SUPABASE_URL = 'INSERISCI_QUI_IL_TUO_PROJECT_URL';
+        const SUPABASE_ANON_KEY = 'INSERISCI_QUI_LA_TUA_ANON_KEY';
         const RESTAURANT_ID = 'ristorante_1';
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -386,7 +386,7 @@
             renderCalendar();
         }
 
-        // --- RENDER DEI TAVOLI SULLA MAPPA INTERATTIVA ---
+        // --- RENDER DEI TAVOLI CON DIMENSIONI DINAMICHE IN BASE AI POSTI ---
         function renderTables() {
             const canvas = document.getElementById('floor-canvas');
             canvas.innerHTML = '';
@@ -415,8 +415,7 @@
                     statusText = translations[currentLang].full;
                 }
 
-                // Forma rotonda o quadrata
-               // Calcolo dinamico della grandezza in base ai posti (seats)
+                // Calcolo dimensioni dinamiche basate sui posti (seats)
                 let width = 110;
                 let height = 110;
                 
@@ -428,16 +427,13 @@
                     height = 110;
                 } else if (table.seats <= 8) {
                     width = 150;
-                    height = 110; // Più largo per tavolate
+                    height = 110;
                 } else {
-                    // Per tavoli grandi (es. 10, 12, 20 posti)
                     width = Math.min(240, 110 + (table.seats * 6));
                     height = 120;
                 }
 
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
-
-                // Coordinate predefinite se non impostate
                 const posX = table.pos_x ?? 50;
                 const posY = table.pos_y ?? 50;
 
@@ -448,7 +444,7 @@
                 tableEl.style.width = `${width}px`;
                 tableEl.style.height = `${height}px`;
                 tableEl.dataset.id = table.id;
-                
+
                 tableEl.innerHTML = `
                     <div class="flex justify-between items-start pointer-events-none">
                         <span class="text-xs font-black opacity-70">T-${table.table_number}</span>
@@ -461,14 +457,10 @@
                     <div class="text-[10px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
                 `;
 
-                // Gestione Click o Apertura Modale
-                tableEl.addEventListener('click', (e) => {
-                    if (!isEditMode) {
-                        openTableModal(table.id);
-                    }
+                tableEl.addEventListener('click', () => {
+                    if (!isEditMode) openTableModal(table.id);
                 });
 
-                // --- GESTIONE DRAG AND DROP (MODALITÀ MODIFICA) ---
                 if (isEditMode) {
                     tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-2');
                     enableDrag(tableEl, table.id, width, height);
@@ -478,7 +470,7 @@
             });
         }
 
-      // --- DRAG AND DROP LOGIC ---
+        // --- DRAG AND DROP CORRETTO CON ASYNC/AWAIT ---
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
@@ -506,7 +498,6 @@
                 element.style.top = `${newY}px`;
             });
 
-            // NOTA CRUCIALE: 'async' deve esserci qui prima delle parentesi!
             document.addEventListener('mouseup', async () => {
                 if (isDragging) {
                     isDragging = false;
@@ -521,28 +512,13 @@
                         tableObj.pos_y = newY;
                     }
 
-                    // Questo 'await' ora è dentro una funzione async e non darà più errore
+                    // Salvataggio asincrono su Supabase
                     await updateTableCoordinates(tableId, newX, newY);
                 }
             });
         }
-                    // Salva su Supabase
-                    await updateTableCoordinates(tableId, newX, newY);
-                }
-            });
-             
-            document.addEventListener('mouseup', async () => {
-                if (isDragging) {
-                    isDragging = false;
-                    element.style.zIndex = 1;
-                    // Salva la nuova posizione su Supabase
-                    const newX = parseInt(element.style.left);
-                    const newY = parseInt(element.style.top);
-                    await updateTableCoordinates(tableId, newX, newY);
-                }
-            });
-        }
-async function updateTableCoordinates(tableId, posX, posY) {
+
+        async function updateTableCoordinates(tableId, posX, posY) {
             const { error } = await supabaseClient
                 .from('tables')
                 .update({ pos_x: posX, pos_y: posY })
@@ -552,18 +528,7 @@ async function updateTableCoordinates(tableId, posX, posY) {
                 console.error("Errore salvataggio posizione:", error.message);
             }
         }
-            body: JSON.stringify({ x: x, y: y })
-        });
-        
-        if (!response.ok) {
-            console.error('Errore durante il salvataggio della posizione');
-        }
-    } catch (error) {
-        console.error('Errore di rete:', error);
-    }
-}
 
-        // Attiva/Disattiva Edit Mode
         function toggleEditMode() {
             isEditMode = !isEditMode;
             const btnEdit = document.getElementById('btn-toggle-edit');
