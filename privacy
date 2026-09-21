@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Informativa sulla Privacy - SmartTable</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-800 p-8">
+    <div class="max-w-3xl mx-auto bg-white p-8 rounded-2xl shadow-sm">
+        <h1 class="text-2xl font-bold mb-4">Informativa sulla Privacy</h1>
+        <p class="text-sm text-gray-600 mb-4">Ultimo aggiornamento: Settembre 2026</p>
+        
+        <h2 class="text-lg font-semibold mt-4 mb-2">1. Titolare del Trattamento</h2>
+        <p class="text-sm mb-4">Il titolare del trattamento è il ristorante/esercente che utilizza il software SmartTable...</p>
+        
+        <h2 class="text-lg font-semibold mt-4 mb-2">2. Dati Raccolti</h2>
+        <p class="text-sm mb-4">Raccogliamo dati di contatto (nome, telefono) esclusivamente per finalità di gestione delle prenotazioni dei tavoli.</p>
+        
+        <a href="index.html" class="text-indigo-600 text-sm font-semibold hover:underline">&larr; Torna alla Home</a>
+    </div>
+</body>
+</html>
