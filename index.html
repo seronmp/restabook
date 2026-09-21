@@ -424,7 +424,7 @@
                 const tableNum = tableObj ? tableObj.table_number : '-';
 
                 tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50/80 transition">
+                    <tr class="hover:bg-gray-50/85 transition">
                         <td class="py-3 px-3 font-bold text-indigo-600">${b.startTime} - ${b.endTime}</td>
                         <td class="py-3 px-3 font-semibold">T-${tableNum}</td>
                         <td class="py-3 px-3 font-medium text-gray-900">${b.name}</td>
@@ -648,17 +648,16 @@
             await loadDataFromSupabase();
         }
 
-         
-            function openTableModal(tableId) {
-    const table = tables.find(t => t.id === tableId);
-    const currentDateStr = formatDateKey(currentDate);
-    
-    document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
-    document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
-    document.getElementById('form-table-id').value = tableId;
+        function openTableModal(tableId) {
+            const table = tables.find(t => t.id === tableId);
+            const currentDateStr = formatDateKey(currentDate);
+            
+            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
+            document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
+            document.getElementById('form-table-id').value = tableId;
 
-    // Pulsante di rotazione e pulsante Elimina Tavolo (attivo in edit mode)
-    const rotateBtnContainer = document.getElementById('modal-rotate-container');
+            // Pulsanti Ruota ed Elimina Tavolo
+            const rotateBtnContainer = document.getElementById('modal-rotate-container');
             rotateBtnContainer.innerHTML = `
                 <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
                     ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
@@ -666,56 +665,31 @@
                 <button type="button" onclick="deleteTable('${tableId}')" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
                     <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
                 </button>
-        `;
-    }
-
-    rotateBtnContainer.innerHTML = `
-        <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
-            ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
-        </button>
-        ${deleteTableBtnHtml}
-    `;
-
-    // Resto della logica per le prenotazioni esistenti nel modale...
-   function openTableModal(tableId) {
-    const table = tables.find(t => t.id === tableId);
-    const currentDateStr = formatDateKey(currentDate);
-    
-    document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
-    document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
-    document.getElementById('form-table-id').value = tableId;
-
-    // Pulsanti Ruota ed Elimina
-    const rotateBtnContainer = document.getElementById('modal-rotate-container');
-    rotateBtnContainer.innerHTML = `
-        <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
-            ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
-        </button>
-        <button type="button" onclick="deleteTable('${tableId}')" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
-            <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
-        </button>
-    `;
-
-    // Gestione della lista prenotazioni (dichiarazione unica di listContainer)
-    const listContainer = document.getElementById('modal-bookings-list');
-    const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
-    
-    listContainer.innerHTML = '';
-    if (tableBookings.length === 0) {
-        listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[currentLang].noBookings}</p>`;
-    } else {
-        tableBookings.forEach(b => {
-            listContainer.innerHTML += `
-                <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2 rounded-lg text-xs">
-                    <div>
-                        <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
-                        <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
-                    </div>
-                    <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
-                </div>
             `;
-        });
-    }
+
+            // Gestione della lista prenotazioni
+            const listContainer = document.getElementById('modal-bookings-list');
+            const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
+            
+            listContainer.innerHTML = '';
+            if (tableBookings.length === 0) {
+                listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[currentLang].noBookings}</p>`;
+            } else {
+                tableBookings.forEach(b => {
+                    listContainer.innerHTML += `
+                        <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2 rounded-lg text-xs">
+                            <div>
+                                <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
+                                <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
+                            </div>
+                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('booking-modal').classList.remove('hidden');
+        }
 
         function closeModal() {
             document.getElementById('booking-modal').classList.add('hidden');
@@ -789,41 +763,37 @@
         }
 
         async function deleteTable(tableId) {
-    if (!supabaseClient) return;
-    
-    // Messaggio di conferma multilingua base
-    const confirmMsg = currentLang === 'de' 
-        ? "Möchten Sie diesen Tisch wirklich löschen? Alle zugehörigen Reservierungen werden ebenfalls entfernt." 
-        : "Vuoi davvero eliminare questo tavolo? Verranno rimosse anche tutte le prenotazioni associate.";
+            if (!supabaseClient) return;
+            
+            const confirmMsg = currentLang === 'de' 
+                ? "Möchten Sie diesen Tisch wirklich löschen? Alle zugehörigen Reservierungen werden ebenfalls entfernt." 
+                : "Vuoi davvero eliminare questo tavolo? Verranno rimosse anche tutte le prenotazioni associate.";
 
-    if (!confirm(confirmMsg)) return;
+            if (!confirm(confirmMsg)) return;
 
-    try {
-        // 1. Prima eliminiamo le prenotazioni collegate per evitare vincoli di chiave esterna (foreign key constraint)
-        const { error: bookingError } = await supabaseClient
-            .from('bookings')
-            .delete()
-            .eq('table_id', tableId);
+            try {
+                const { error: bookingError } = await supabaseClient
+                    .from('bookings')
+                    .delete()
+                    .eq('table_id', tableId);
 
-        if (bookingError) throw bookingError;
+                if (bookingError) throw bookingError;
 
-        // 2. Successivamente procediamo all'eliminazione del tavolo
-        const { error: tableError } = await supabaseClient
-            .from('tables')
-            .delete()
-            .eq('id', tableId);
+                const { error: tableError } = await supabaseClient
+                    .from('tables')
+                    .delete()
+                    .eq('id', tableId);
 
-        if (tableError) throw tableError;
+                if (tableError) throw tableError;
 
-        // Chiudi il modale e ricarica i dati aggiornati
-        closeModal();
-        await loadDataFromSupabase();
+                closeModal();
+                await loadDataFromSupabase();
 
-    } catch (err) {
-        console.error("Errore durante l'eliminazione del tavolo:", err.message);
-        alert("Errore durante l'eliminazione: " + err.message);
+            } catch (err) {
+                console.error("Errore durante l'eliminazione del tavolo:", err.message);
+                alert("Errore durante l'eliminazione: " + err.message);
+            }
         }
-    }
     </script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
@@ -991,7 +961,7 @@
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
             <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
 
-            <!-- Container Pulsante Rotazione Tavolo -->
+            <!-- Container Pulsante Rotazione e Cancellazione Tavolo -->
             <div id="modal-rotate-container"></div>
 
             <div class="mb-4">
