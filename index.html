@@ -519,15 +519,21 @@
             });
         }
 
-        function enableDrag(element, tableId, width, height) {
+     function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
 
             element.addEventListener('mousedown', (e) => {
                 if (!isEditMode) return;
                 isDragging = true;
-                startX = e.clientX - element.offsetLeft;
-                startY = e.clientY - element.offsetTop;
+                
+                const canvas = document.getElementById('floor-canvas');
+                const rect = canvas.getBoundingClientRect();
+                
+                // Salva la posizione iniziale del mouse rispetto al canvas (inclusi i pixel di scroll)
+                startX = e.clientX - rect.left + canvas.scrollLeft - element.offsetLeft;
+                startY = e.clientY - rect.top + canvas.scrollTop - element.offsetTop;
+                
                 element.style.zIndex = 1000;
                 e.stopPropagation();
             });
@@ -535,12 +541,13 @@
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging || !isEditMode) return;
                 const canvas = document.getElementById('floor-canvas');
-                const canvasRect = canvas.getBoundingClientRect();
+                const rect = canvas.getBoundingClientRect();
                 
-                let newX = e.clientX - startX;
-                let newY = e.clientY - startY;
+                // Calcola le nuove coordinate sottraendo il rettangolo del canvas e aggiungendo lo scroll corrente
+                let newX = e.clientX - rect.left + canvas.scrollLeft - startX;
+                let newY = e.clientY - rect.top + canvas.scrollTop - startY;
 
-                // Blocca i bordi per impedire che escano dal canvas (tenendo conto dello scroll corrente)
+                // Limiti per non far uscire il tavolo dai bordi interni del canvas
                 const maxX = canvas.scrollWidth - width - 10;
                 const maxY = canvas.scrollHeight - height - 10;
 
