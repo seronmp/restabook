@@ -951,7 +951,14 @@
             </div>
         </main>
     </div>
-
+    
+<!-- Aggiungi questo blocco dentro il tuo <form id="booking-form"> prima del pulsante di invio -->
+<div class="flex items-start space-x-2 my-3">
+    <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+    <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
+        Ho letto e accetto l'<a href="privacy.html" target="_blank" class="text-indigo-600 underline">Informativa sulla Privacy</a> e acconsento al trattamento dei miei dati per la gestione della prenotazione. *
+    </label>
+</div>
     <!-- Modals -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
