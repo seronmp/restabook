@@ -519,18 +519,20 @@
             });
         }
 
+        // Funzione aggiornata con Pointer Events per piena compatibilità iPhone/touch e desktop
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
 
-            element.addEventListener('mousedown', (e) => {
+            element.style.touchAction = 'none'; // Evita lo scroll della pagina su iOS durante il trascinamento
+
+            element.addEventListener('pointerdown', (e) => {
                 if (!isEditMode) return;
                 isDragging = true;
+                element.setPointerCapture(e.pointerId);
                 
                 const canvas = document.getElementById('floor-canvas');
-                const rect = canvas.getBoundingClientRect();
                 
-                // Offset pulito senza scrollbar: sottrae la posizione del mouse rispetto all'elemento corrente
                 startX = e.clientX - element.getBoundingClientRect().left;
                 startY = e.clientY - element.getBoundingClientRect().top;
                 
@@ -538,16 +540,14 @@
                 e.stopPropagation();
             });
 
-            document.addEventListener('mousemove', (e) => {
+            document.addEventListener('pointermove', (e) => {
                 if (!isDragging || !isEditMode) return;
                 const canvas = document.getElementById('floor-canvas');
                 const rect = canvas.getBoundingClientRect();
                 
-                // Calcolo diretto delle coordinate all'interno dei confini del canvas
                 let newX = e.clientX - rect.left - startX;
                 let newY = e.clientY - rect.top - startY;
 
-                // Mantiene il tavolo dentro i limiti del canvas
                 const maxX = canvas.clientWidth - width - 10;
                 const maxY = canvas.clientHeight - height - 10;
 
@@ -558,7 +558,7 @@
                 element.style.top = `${newY}px`;
             });
 
-            document.addEventListener('mouseup', () => {
+            document.addEventListener('pointerup', (e) => {
                 if (isDragging) {
                     isDragging = false;
                     element.style.zIndex = 1;
@@ -911,7 +911,7 @@
                         </div>
                     </div>
 
-                    <!-- CANVAS SENZA DRAGBAR / SCROLLBAR LATERALE -->
+                    <!-- CANVAS -->
                     <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner"></div>
                 </div>
             </div>
