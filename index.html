@@ -648,23 +648,7 @@
             await loadDataFromSupabase();
         }
 
-        function openTableModal(tableId) {
-            const table = tables.find(t => t.id === tableId);
-            const currentDateStr = formatDateKey(currentDate);
-            
-            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
-            document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
-            document.getElementById('form-table-id').value = tableId;
-
-            const rotateBtnContainer = document.getElementById('modal-rotate-container');
-            rotateBtnContainer.innerHTML = `
-                <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-3">
-                    ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
-                </button>
-            `;
-                });
-            }
-            
+         
             function openTableModal(tableId) {
     const table = tables.find(t => t.id === tableId);
     const currentDateStr = formatDateKey(currentDate);
