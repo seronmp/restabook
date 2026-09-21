@@ -30,7 +30,6 @@
         let currentRoomId = 'sala-principale';
         let isEditMode = false;
 
-        // Inizializzazione sicura al caricamento del DOM
         document.addEventListener('DOMContentLoaded', () => {
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -132,7 +131,6 @@
             }
         };
 
-        // --- GESTIONE LOGIN & AUTENTICAZIONE ---
         async function eseguiLogin(event) {
             if (event) event.preventDefault();
             
@@ -187,7 +185,6 @@
             await loadDataFromSupabase();
         }
 
-        // --- CARICAMENTO DATI DA SUPABASE ---
         async function loadDataFromSupabase() {
             if (!currentRestaurantId || !supabaseClient) return;
 
@@ -293,7 +290,6 @@
             renderTables();
         }
 
-        // --- GESTIONE SALE (ROOMS) ---
         function renderRooms() {
             const container = document.getElementById('rooms-tabs-container');
             if (!container) return;
@@ -488,7 +484,6 @@
                 tableEl.style.height = `${height}px`;
                 tableEl.style.transform = `rotate(${rotation}deg)`;
 
-                // Pulsante di eliminazione rapido in alto a destra se isEditMode è attivo
                 let editDeleteBtnHtml = '';
                 if (isEditMode) {
                     editDeleteBtnHtml = `
@@ -539,13 +534,18 @@
 
             document.addEventListener('mousemove', (e) => {
                 if (!isDragging || !isEditMode) return;
-                const canvasRect = document.getElementById('floor-canvas').getBoundingClientRect();
+                const canvas = document.getElementById('floor-canvas');
+                const canvasRect = canvas.getBoundingClientRect();
                 
                 let newX = e.clientX - startX;
                 let newY = e.clientY - startY;
 
-                newX = Math.max(0, Math.min(newX, canvasRect.width - width - 10));
-                newY = Math.max(0, Math.min(newY, canvasRect.height - height - 10));
+                // Blocca i bordi per impedire che escano dal canvas (tenendo conto dello scroll corrente)
+                const maxX = canvas.scrollWidth - width - 10;
+                const maxY = canvas.scrollHeight - height - 10;
+
+                newX = Math.max(10, Math.min(newX, maxX));
+                newY = Math.max(10, Math.min(newY, maxY));
 
                 element.style.left = `${newX}px`;
                 element.style.top = `${newY}px`;
@@ -667,7 +667,6 @@
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
 
-            // Pulsanti Ruota e Elimina Tavolo (nella modale)
             const rotateBtnContainer = document.getElementById('modal-rotate-container');
             rotateBtnContainer.innerHTML = `
                 <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
@@ -678,7 +677,6 @@
                 </button>
             `;
 
-            // Gestione della lista prenotazioni
             const listContainer = document.getElementById('modal-bookings-list');
             const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
             
@@ -822,14 +820,12 @@
     <!-- CONTENITORE DELL'APP -->
     <div id="app-container" style="display: none;">
 
-        <!-- Header & Language Switcher -->
         <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
                 <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
             </div>
             <div class="flex items-center space-x-4">
-                <!-- Pulsante Modifica Sala -->
                 <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
                     <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
@@ -842,10 +838,8 @@
             </div>
         </header>
 
-        <!-- Main Container -->
         <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-            <!-- Left Column: Calendar & Quick Controls -->
             <div class="space-y-6 lg:col-span-1">
                 <div class="bg-white p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-4">
@@ -856,14 +850,12 @@
                         </div>
                     </div>
                     <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
-                    <!-- Grid Calendar -->
                     <div class="grid grid-cols-7 gap-1 text-center text-xs font-medium text-gray-400 mb-2">
                         <span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span>
                     </div>
                     <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
                 </div>
 
-                <!-- Legend -->
                 <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
                     <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
                     <div class="flex items-center space-x-2">
@@ -881,14 +873,10 @@
                 </div>
             </div>
 
-            <!-- Right/Center Columns: Interactive Floor Plan & Multiple Rooms -->
             <div class="lg:col-span-3 space-y-6">
                 
-                <!-- Selezione Sale (Tabs) e Pulsante Nuova Sala in Edit Mode -->
                 <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
-                    <div id="rooms-tabs-container" class="flex flex-wrap gap-2">
-                        <!-- Generato dinamicamente -->
-                    </div>
+                    <div id="rooms-tabs-container" class="flex flex-wrap gap-2"></div>
                     <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
                         <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
                     </button>
@@ -910,22 +898,18 @@
                                     <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
                                 </select>
                             </div>
-                            <!-- Pulsante Aggiungi Nuovo Tavolo (Visibile solo in Edit Mode) -->
                             <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
                                 <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
                             </button>
                         </div>
                     </div>
 
-                    <!-- CANVAS / AREA DELLA SALA -->
-                    <div id="floor-canvas" class="relative w-full h-[650px] min-w-[900px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-auto shadow-inner">
-                        <!-- I tavoli verranno posizionati qui dinamicamente -->
-                    </div>
+                    <!-- CANVAS -->
+                    <div id="floor-canvas" class="relative w-full h-[650px] min-w-[900px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-auto shadow-inner"></div>
                 </div>
             </div>
         </main>
 
-        <!-- BOX RIEPILOGO PRENOTAZIONI GIORNALIERE -->
         <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
             <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
@@ -933,7 +917,6 @@
                         <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
                         <p id="summary-box-subtitle" class="text-xs text-gray-500">Elenco completo e totale ospiti attesi per la data selezionata.</p>
                     </div>
-                    <!-- Badge Totale Persone Attese -->
                     <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
                         <i class="fa-solid fa-users text-indigo-600"></i>
                         <div>
@@ -943,7 +926,6 @@
                     </div>
                 </div>
 
-                <!-- Tabella / Lista delle prenotazioni del giorno -->
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
@@ -956,23 +938,20 @@
                                 <th class="py-2 px-3 text-right font-semibold" id="th-actions">Azioni</th>
                             </tr>
                         </thead>
-                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700">
-                            <!-- Inserito dinamicamente da JavaScript -->
-                        </tbody>
+                        <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700"></tbody>
                     </table>
                 </div>
             </div>
         </main>
     </div>
 
-    <!-- Modal Prenotazione Tavolo con Controllo Rotazione -->
+    <!-- Modals -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
             <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
 
-            <!-- Container Pulsante Rotazione e Cancellazione Tavolo -->
             <div id="modal-rotate-container"></div>
 
             <div class="mb-4">
@@ -1014,7 +993,6 @@
         </div>
     </div>
     
-    <!-- Modal Aggiungi Tavolo (Edit Mode) -->
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
             <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
@@ -1040,7 +1018,6 @@
         </div>
     </div>
 
-    <!-- Modal Aggiungi Sala (Edit Mode) -->
     <div id="room-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
             <button onclick="closeRoomConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
