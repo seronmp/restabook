@@ -481,14 +481,25 @@
                 const rotation = table.rotation ?? 0;
 
                 const tableEl = document.createElement('div');
-                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md`;
+                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-3 flex flex-col justify-between shadow-sm transition-all select-none cursor-pointer hover:shadow-md relative`;
                 tableEl.style.left = `${posX}px`;
                 tableEl.style.top = `${posY}px`;
                 tableEl.style.width = `${width}px`;
                 tableEl.style.height = `${height}px`;
                 tableEl.style.transform = `rotate(${rotation}deg)`;
 
+                // Pulsante di eliminazione rapido in alto a destra se isEditMode è attivo
+                let editDeleteBtnHtml = '';
+                if (isEditMode) {
+                    editDeleteBtnHtml = `
+                        <button onclick="event.stopPropagation(); deleteTable('${table.id}')" class="absolute -top-2.5 -right-2.5 bg-rose-600 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                }
+
                 tableEl.innerHTML = `
+                    ${editDeleteBtnHtml}
                     <div class="flex justify-between items-start pointer-events-none">
                         <span class="text-xs font-black opacity-70">T-${table.table_number}</span>
                         <span class="w-2.5 h-2.5 ${badgeColor} rounded-full inline-block"></span>
@@ -656,7 +667,7 @@
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
 
-            // Pulsanti Ruota ed Elimina Tavolo
+            // Pulsanti Ruota e Elimina Tavolo (nella modale)
             const rotateBtnContainer = document.getElementById('modal-rotate-container');
             rotateBtnContainer.innerHTML = `
                 <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
