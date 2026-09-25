@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SportWell - Gestione Prenotazioni</title>
+    <!-- Tailwind CSS per uno stile pulito e moderno -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <div class="container mx-auto p-4 max-w-4xl">
+        <header class="bg-white shadow rounded-lg p-6 mb-6 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-bold text-gray-800">🍕 SportWell - Prenotazioni</h1>
+                <p class="text-sm text-gray-500">Gestione sala e bot WhatsApp</p>
+            </div>
+            <span id="status-db" class="px-3 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Connessione in corso...</span>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Colonna Form Aggiunta Rapida (Telefono) -->
+            <div class="bg-white shadow rounded-lg p-6 md:col-span-1">
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">Nuova Prenotazione (Telefono)</h2>
+                <form id="booking-form" class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Nome Cliente</label>
+                        <input type="text" id="guest_name" required class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Numero Persone</label>
+                        <input type="number" id="number_of_guests" required min="1" value="2" class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Telefono</label>
+                        <input type="text" id="phone" placeholder="+39..." class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600">Data e Ora</label>
+                        <input type="datetime-local" id="booking_time" required class="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm">
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md text-sm font-semibold hover:bg-blue-700 transition">Salva Prenotazione</button>
+                </form>
+            </div>
+
+            <!-- Colonna Lista Prenotazioni -->
+            <div class="bg-white shadow rounded-lg p-6 md:col-span-2">
+                <h2 class="text-lg font-semibold text-gray-700 mb-4">Elenco Prenotazioni Attive</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b text-xs text-gray-500 uppercase">
+                                <th class="py-2 px-3">Orario</th>
+                                <th class="py-2 px-3">Cliente</th>
+                                <th class="py-2 px-3">Persone</th>
+                                <th class="py-2 px-3">Fonte</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookings-list" class="text-sm text-gray-700">
+                            <!-- I dati verranno inseriti qui via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CONFIGURAZIONE SUPABASE (Sostituisci con le tue chiavi del progetto)
+        const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co/rest/v1/';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        
+        // ID della pizzeria SportWell salvato nella tabella restaurants
+        const RESTAURANT_ID = 'fa948eff-a73a-4248-9b5e-e0f1f49c3916';
+
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function checkConnection() {
+            const statusEl = document.getElementById('status-db');
+            try {
+                const { data, error } = await supabaseClient.from('restaurants').select('name').limit(1);
+                if (error) throw error;
+                statusEl.textContent = 'Online';
+                statusEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800';
+                loadBookings();
+            } catch (err) {
+                statusEl.textContent = 'Errore Connessione';
+                statusEl.className = 'px-3 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800';
+                console.error(err);
+            }
+        }
+
+        async function loadBookings() {
+            const listEl = document.getElementById('bookings-list');
+            const { data, error } = await supabaseClient
+                .from('bookings')
+                .select('*')
+                .eq('restaurant_id', RESTAURANT_ID)
+                .order('booking_time', { ascending: true });
+
+            if (error) {
+                console.error('Errore caricamento:', error);
+                return;
+            }
+
+            listEl.innerHTML = '';
+            if (data.length === 0) {
+                listEl.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-400">Nessuna prenotazione trovata</td></tr>`;
+                return;
+            }
+
+            data.forEach(b => {
+                const dateObj = new Date(b.booking_time);
+                const formattedTime = dateObj.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+                
+                const badgeSource = b.source === 'whatsapp_bot' 
+                    ? '<span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded">WhatsApp</span>' 
+                    : '<span class="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded">Telefono/Manuale</span>';
+
+                const row = `
+                    <tr class="border-b hover:bg-gray-50">
+                        <td class="py-3 px-3 font-medium">${formattedTime}</td>
+                        <td class="py-3 px-3">${b.guest_name} <br><span class="text-xs text-gray-400">${b.phone || ''}</span></td>
+                        <td class="py-3 px-3 font-bold text-blue-600">${b.number_of_guests} pers.</td>
+                        <td class="py-3 px-3">${badgeSource}</td>
+                    </tr>
+                `;
+                listEl.innerHTML += row;
+            });
+        }
+
+        // Gestione invio modulo nuova prenotazione
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const newBooking = {
+                restaurant_id: RESTAURANT_ID,
+                guest_name: document.getElementById('guest_name').value,
+                number_of_guests: parseInt(document.getElementById('number_of_guests').value),
+                phone: document.getElementById('phone').value,
+                booking_time: new Date(document.getElementById('booking_time').value).toISOString(),
+                source: 'manual',
+                status: 'confirmed'
+            };
+
+            const { error } = await supabaseClient.from('bookings').insert([newBooking]);
+
+            if (error) {
+                alert('Errore durante il salvataggio: ' + error.message);
+            } else {
+                document.getElementById('booking-form').reset();
+                loadBookings(); // Ricarica la tabella
+            }
+        });
+
+        // Avvia controllo connessione al caricamento
+        checkConnection();
+    </script>
+</body>
+</html>
