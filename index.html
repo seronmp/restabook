@@ -80,6 +80,8 @@
                 lblName: "Nome Cliente",
                 lblGuests: "Persone",
                 lblPhone: "Telefono",
+                privacyText: "Il cliente ha già accettato l'Informativa sulla Privacy in precedenza.",
+                privacyNewText: "Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *",
                 btnSave: "Salva Prenotazione",
                 seats: "Posti",
                 noBookings: "Nessuna prenotazione oggi.",
@@ -127,6 +129,8 @@
                 lblName: "Kundenname",
                 lblGuests: "Personen",
                 lblPhone: "Telefon",
+                privacyText: "Der Kunde hat die Datenschutzbestimmungen bereits akzeptiert.",
+                privacyNewText: "Ich habe die Datenschutzbestimmungen gelesen und akzeptiere sie. *",
                 btnSave: "Reservierung speichern",
                 seats: "Plätze",
                 noBookings: "Keine Reservierungen.",
@@ -306,9 +310,50 @@
 
             document.getElementById('txt-edit-mode').innerText = isEditMode ? t.editModeOn : t.editModeOff;
 
+            // Aggiorna etichetta privacy in base allo stato attuale del telefono
+            checkClientPrivacy();
+
             renderRooms();
             renderCalendar();
             renderTables();
+        }
+
+        // --- CONTROLLO INTELLIGENTE PRIVACY CLIENTE ESISTENTE ---
+        function checkClientPrivacy() {
+            const phoneInput = document.getElementById('form-phone').value.trim();
+            const privacyContainer = document.getElementById('privacy-container');
+            const privacyConsent = document.getElementById('privacy-consent');
+            const privacyLabel = document.getElementById('privacy-label-text');
+            const t = translations[currentLang];
+
+            if (!phoneInput) {
+                // Se non è inserito alcun telefono, mostra il checkbox come obbligatorio per sicurezza
+                privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+                privacyConsent.required = true;
+                privacyConsent.checked = false;
+                privacyConsent.disabled = false;
+                privacyLabel.innerText = t.privacyNewText;
+                return;
+            }
+
+            // Verifica se esiste già almeno una prenotazione passata con questo numero di telefono
+            const existingClient = bookings.some(b => b.phone && b.phone.trim() === phoneInput);
+
+            if (existingClient) {
+                // Cliente già noto: privacy già accettata in passato, saltiamo l'obbligo visivo
+                privacyConsent.checked = true;
+                privacyConsent.required = false;
+                privacyConsent.disabled = true;
+                privacyLabel.innerText = t.privacyText;
+                privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+            } else {
+                // Nuovo cliente: richiede spunta obbligatoria
+                privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+                privacyConsent.required = true;
+                privacyConsent.checked = false;
+                privacyConsent.disabled = false;
+                privacyLabel.innerText = t.privacyNewText;
+            }
         }
 
         function renderRooms() {
@@ -511,7 +556,6 @@
             const timeFilter = document.getElementById('filter-time').value;
             const roomObj = rooms.find(r => r.id === currentRoomId) || rooms[0];
 
-            // 1. MURI PIÙ SOTTILI (h-1.5 anziché h-2.5)
             if (roomObj && roomObj.walls) {
                 roomObj.walls.forEach((wall, wallIndex) => {
                     const dx = wall.x2 - wall.x1;
@@ -576,7 +620,6 @@
                 });
             }
 
-            // 2. RENDERIZZA I TAVOLI
             const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
             roomTables.forEach(table => {
                 let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
@@ -904,6 +947,10 @@
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
 
+            // Reset form e stato privacy alla apertura
+            document.getElementById('booking-form').reset();
+            checkClientPrivacy();
+
             const rotateBtnContainer = document.getElementById('modal-rotate-container');
             rotateBtnContainer.innerHTML = `
                 <button type="button" onclick="deleteTable('${tableId}')" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
@@ -1192,16 +1239,17 @@
                     </div>
                     <div>
                         <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
-                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        <!-- Aggiunto evento oninput per controllare in tempo reale se il cliente è già noto -->
+                        <input type="tel" id="form-phone" oninput="checkClientPrivacy()" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
-               <!-- Checkbox Privacy (Visibile solo se serve o gestito in modo smart) -->
+                <!-- Box privacy dinamico -->
                 <div class="flex items-start space-x-2 my-2" id="privacy-container">
-                <input type="checkbox" id="privacy-consent" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
-                    Il cliente ha accettato l'Informativa sulla Privacy e il trattamento dei dati. *
-            </label>
-            </div>
+                    <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight" id="privacy-label-text">
+                        Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *
+                    </label>
+                </div>
                 <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
             </form>
         </div>
