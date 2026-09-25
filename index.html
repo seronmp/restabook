@@ -66,7 +66,7 @@
                 title: "SmartTable Manager",
                 calendar: "Calendario",
                 floorTitle: "Pianta Interattiva & Muri Dinamici",
-                floorSubtitle: "Clicca su un tavolo per prenotare. In modifica, trascina i punti dei muri, dividili o crea rientranze.",
+                floorSubtitle: "Clicca sui tavoli per prenotare. In modifica puoi ridimensionarli, ruotarli, regolarne i posti e modellare i muri.",
                 timeFilter: "Fascia:",
                 legendTitle: "Legenda Tavoli:",
                 free: "Libero",
@@ -113,7 +113,7 @@
                 title: "SmartTable Manager",
                 calendar: "Kalender",
                 floorTitle: "Interaktiver Raum- & Wandplan",
-                floorSubtitle: "Klicken zum Reservieren. Im Modus Wände ziehen, teilen oder Nischen erstellen.",
+                floorSubtitle: "Klicken zum Reservieren. Im Modus Grösse anpassen, drehen, Plätze ändern und Wände bearbeiten.",
                 timeFilter: "Zeitfenster:",
                 legendTitle: "Tisch-Legende:",
                 free: "Frei",
@@ -233,6 +233,8 @@
                     shape: t.shape,
                     pos_x: t.pos_x ?? 50,
                     pos_y: t.pos_y ?? 50,
+                    width: t.width ?? (t.seats <= 2 ? 70 : t.seats <= 4 ? 90 : t.seats <= 8 ? 120 : 150),
+                    height: t.height ?? (t.seats <= 8 ? 90 : 100),
                     rotation: t.rotation ?? 0,
                     room_id: t.room_id || 'sala-principale',
                     restaurant_id: t.restaurant_id
@@ -367,7 +369,6 @@
             renderTables();
         }
 
-        // Funzione per dividere un muro a metà (utile per creare angoli e rientranze)
         function splitWall(roomObj, index) {
             const w = roomObj.walls[index];
             const midX = Math.round((w.x1 + w.x2) / 2);
@@ -510,7 +511,7 @@
             const timeFilter = document.getElementById('filter-time').value;
             const roomObj = rooms.find(r => r.id === currentRoomId) || rooms[0];
 
-            // 1. RENDERIZZA I MURI E LE PORTE
+            // 1. MURI PIÙ SOTTILI (h-1.5 anziché h-2.5)
             if (roomObj && roomObj.walls) {
                 roomObj.walls.forEach((wall, wallIndex) => {
                     const dx = wall.x2 - wall.x1;
@@ -520,7 +521,7 @@
 
                     const wallDiv = document.createElement('div');
                     const isDoor = wall.type === 'door';
-                    wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-3' : 'bg-slate-700 h-2.5'} rounded transition-all`;
+                    wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-2' : 'bg-slate-700 h-1.5'} rounded transition-all`;
                     wallDiv.style.left = `${wall.x1}px`;
                     wallDiv.style.top = `${wall.y1}px`;
                     wallDiv.style.width = `${length}px`;
@@ -533,38 +534,35 @@
 
                     if (isEditMode) {
                         wallDiv.classList.add('cursor-pointer', 'ring-2', 'ring-indigo-400');
-                        wallDiv.title = "Clicca per alternare Muro / Porta. Usa i pulsanti azione sui nodi.";
+                        wallDiv.title = "Clicca per alternare Muro / Porta.";
 
-                        // Pulsanti rapidi al centro del muro in modalità modifica
                         const midControl = document.createElement('div');
                         midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90';
                         midControl.innerHTML = `
-                            <button onclick="event.stopPropagation(); splitWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="Dividi Muro in due segmenti">Dividi</button>
+                            <button onclick="event.stopPropagation(); splitWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="Dividi Muro">Dividi</button>
                             <button onclick="event.stopPropagation(); removeWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700" title="Elimina Muro"><i class="fa-solid fa-xmark"></i></button>
                         `;
                         wallDiv.appendChild(midControl);
 
-                        // Clic sul muro per cambiare tipo (muro solido vs porta/corridoio)
                         wallDiv.onclick = (e) => {
                             if(e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                             wall.type = wall.type === 'wall' ? 'door' : 'wall';
                             renderTables();
                         };
 
-                        // Maniglie trascinabili per i punti estremi (x1, y1) e (x2, y2)
                         const h1 = document.createElement('div');
-                        h1.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[10px] hover:scale-110 transition';
+                        h1.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
                         h1.style.left = `${wall.x1}px`;
                         h1.style.top = `${wall.y1}px`;
-                        h1.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[8px]"></i>';
+                        h1.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
                         enableWallDrag(h1, wall, 'start');
                         canvas.appendChild(h1);
 
                         const h2 = document.createElement('div');
-                        h2.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[10px] hover:scale-110 transition';
+                        h2.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
                         h2.style.left = `${wall.x2}px`;
                         h2.style.top = `${wall.y2}px`;
-                        h2.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[8px]"></i>';
+                        h2.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
                         enableWallDrag(h2, wall, 'end');
                         canvas.appendChild(h2);
                     }
@@ -597,8 +595,8 @@
                     statusText = translations[currentLang].full;
                 }
 
-                let width = table.seats <= 2 ? 70 : table.seats <= 4 ? 90 : table.seats <= 8 ? 120 : 150;
-                let height = table.seats <= 8 ? 90 : 100;
+                let width = table.width ?? 90;
+                let height = table.height ?? 90;
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
 
                 const tableEl = document.createElement('div');
@@ -609,21 +607,41 @@
                 tableEl.style.height = `${height}px`;
                 tableEl.style.transform = `rotate(${table.rotation ?? 0}deg)`;
 
-                let editDeleteBtnHtml = isEditMode ? `
-                    <button onclick="event.stopPropagation(); deleteTable('${table.id}')" class="absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>` : '';
+                let editControlsHtml = '';
+                if (isEditMode) {
+                    editControlsHtml = `
+                        <button onclick="event.stopPropagation(); deleteTable('${table.id}')" class="absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                        <button onclick="event.stopPropagation(); rotateTable('${table.id}')" class="absolute -top-2 left-1 bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-amber-600 z-30" title="Ruota 90°">
+                            <i class="fa-solid fa-rotate"></i> 90°
+                        </button>
+                        <div class="absolute -bottom-2 -right-2 w-4 h-4 bg-indigo-600 rounded-full cursor-se-resize z-40 shadow flex items-center justify-center text-white text-[8px]" title="Trascina per ridimensionare" id="resize-handle-${table.id}">
+                            <i class="fa-solid fa-expand text-[7px]"></i>
+                        </div>
+                    `;
+                }
 
-                tableEl.innerHTML = `
-                    ${editDeleteBtnHtml}
-                    <div class="flex justify-between items-start pointer-events-none">
-                        <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
-                        <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
+                // Modifica diretta dei posti direttamente sul tavolo senza aprire modali
+                let seatsControlHtml = isEditMode ? `
+                    <div class="flex items-center justify-center space-x-1 my-auto bg-white/80 rounded px-1 py-0.5 z-30 shadow-xs" onclick="event.stopPropagation();">
+                        <span class="text-[9px] font-bold text-gray-700">Posti:</span>
+                        <input type="number" min="1" max="30" value="${table.seats}" onchange="updateTableSeats('${table.id}', this.value)" class="w-8 text-center text-xs font-black bg-white border border-gray-300 rounded">
                     </div>
+                ` : `
                     <div class="text-center pointer-events-none my-auto">
                         <h3 class="text-sm font-black">${table.table_number}</h3>
                         <div class="text-[9px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
                     </div>
+                `;
+
+                tableEl.innerHTML = `
+                    ${editControlsHtml}
+                    <div class="flex justify-between items-start pointer-events-none">
+                        <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
+                        <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
+                    </div>
+                    ${seatsControlHtml}
                     <div class="text-[9px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
                 `;
 
@@ -634,13 +652,20 @@
                 if (isEditMode) {
                     tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
                     enableTableDrag(tableEl, table.id, width, height);
+                    
+                    // Attiva il ridimensionamento tramite la maniglia dedicata
+                    setTimeout(() => {
+                        const resizeHandle = document.getElementById(`resize-handle-${table.id}`);
+                        if (resizeHandle) {
+                            enableTableResize(resizeHandle, tableEl, table.id);
+                        }
+                    }, 0);
                 }
 
                 canvas.appendChild(tableEl);
             });
         }
 
-        // TRASCINAMENTO FLUIDO DEI MURI TRAMITE DOCUMENT LISTENER
         function enableWallDrag(handleEl, wallObj, pointType) {
             let isDragging = false;
             handleEl.style.touchAction = 'none';
@@ -670,10 +695,8 @@
                 renderTables();
             };
 
-            const onPointerUp = (e) => {
-                if (isDragging) {
-                    isDragging = false;
-                }
+            const onPointerUp = () => {
+                if (isDragging) isDragging = false;
             };
 
             document.addEventListener('pointermove', onPointerMove);
@@ -686,7 +709,7 @@
             element.style.touchAction = 'none';
 
             element.addEventListener('pointerdown', (e) => {
-                if (!isEditMode) return;
+                if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
                 isDragging = true;
                 element.setPointerCapture(e.pointerId);
                 startX = e.clientX - element.getBoundingClientRect().left;
@@ -733,9 +756,66 @@
             document.addEventListener('pointerup', onPointerUp);
         }
 
+        // Funzione per il ridimensionamento dinamico del tavolo
+        function enableTableResize(handleEl, tableEl, tableId) {
+            let isResizing = false;
+            let startX, startY, startWidth, startHeight;
+            handleEl.style.touchAction = 'none';
+
+            handleEl.addEventListener('pointerdown', (e) => {
+                isResizing = true;
+                handleEl.setPointerCapture(e.pointerId);
+                startX = e.clientX;
+                startY = e.clientY;
+                startWidth = tableEl.offsetWidth;
+                startHeight = tableEl.offsetHeight;
+                e.stopPropagation();
+            });
+
+            const onPointerMove = (e) => {
+                if (!isResizing) return;
+                let newWidth = Math.max(50, startWidth + (e.clientX - startX));
+                let newHeight = Math.max(50, startHeight + (e.clientY - startY));
+
+                tableEl.style.width = `${newWidth}px`;
+                tableEl.style.height = `${newHeight}px`;
+            };
+
+            const onPointerUp = async () => {
+                if (isResizing) {
+                    isResizing = false;
+                    const finalWidth = tableEl.offsetWidth;
+                    const finalHeight = tableEl.offsetHeight;
+
+                    const tableObj = tables.find(t => t.id === tableId);
+                    if (tableObj) {
+                        tableObj.width = finalWidth;
+                        tableObj.height = finalHeight;
+                        if (supabaseClient) {
+                            await supabaseClient.from('tables').update({ width: finalWidth, height: finalHeight }).eq('id', tableId);
+                        }
+                    }
+                }
+            };
+
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
+        }
+
         async function updateTableCoordinates(tableId, posX, posY) {
             if (!supabaseClient) return;
             await supabaseClient.from('tables').update({ pos_x: posX, pos_y: posY }).eq('id', tableId);
+        }
+
+        async function updateTableSeats(tableId, newSeats) {
+            const seatsNum = parseInt(newSeats) || 1;
+            const tableObj = tables.find(t => t.id === tableId);
+            if (tableObj) {
+                tableObj.seats = seatsNum;
+                if (supabaseClient) {
+                    await supabaseClient.from('tables').update({ seats: seatsNum }).eq('id', tableId);
+                }
+            }
         }
 
         async function rotateTable(tableId) {
@@ -797,6 +877,8 @@
                     shape: shape,
                     pos_x: 50,
                     pos_y: 50,
+                    width: seats <= 2 ? 70 : seats <= 4 ? 90 : 120,
+                    height: 90,
                     rotation: 0,
                     room_id: currentRoomId,
                     restaurant_id: currentRestaurantId
@@ -822,9 +904,6 @@
 
             const rotateBtnContainer = document.getElementById('modal-rotate-container');
             rotateBtnContainer.innerHTML = `
-                <button type="button" onclick="rotateTable('${tableId}')" class="w-full bg-amber-500 text-white font-medium py-1.5 rounded-lg hover:bg-amber-600 transition text-xs mb-2">
-                    ${translations[currentLang].rotateTable} (Attuale: ${table.rotation || 0}°)
-                </button>
                 <button type="button" onclick="deleteTable('${tableId}')" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
                     <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
                 </button>
@@ -1012,7 +1091,7 @@
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
                             <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva & Muri Dinamici</h2>
-                            <p id="floor-subtitle" class="text-xs text-gray-500">Trascina i punti per modellare la sala, clicca "Dividi" per creare rientranze.</p>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Ridimensiona, ruota, unisci tavoli o modifica i posti direttamente in modalità modifica.</p>
                         </div>
                         <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
                             <div class="flex items-center space-x-2">
@@ -1131,7 +1210,7 @@
             <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
             <form onsubmit="saveNewTable(event)" class="space-y-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9)</label>
+                    <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9 o 10A)</label>
                     <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                 </div>
                 <div>
