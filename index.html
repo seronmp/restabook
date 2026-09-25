@@ -24,8 +24,29 @@
         let tables = [];
         let bookings = [];
         let rooms = [
-            { id: 'sala-principale', name: 'Sala Principale / Hauptsaal' },
-            { id: 'veranda', name: 'Veranda / Terrasse' }
+            { 
+                id: 'sala-principale', 
+                name: 'Sala Principale / Hauptsaal',
+                // Muri/Perimetro personalizzabili in pixel o percentuali relative
+                walls: [
+                    { x1: 20, y1: 20, x2: 700, y2: 20, type: 'wall' },   // Muro alto
+                    { x1: 700, y1: 20, x2: 700, y2: 500, type: 'wall' },  // Muro destro
+                    { x1: 700, y1: 500, x2: 350, y2: 500, type: 'wall' }, // Muro basso parte 1
+                    { x1: 350, y1: 500, x2: 350, y2: 350, type: 'door' }, // Corridoio/Porta di passaggio
+                    { x1: 350, y1: 350, x2: 20, y2: 350, type: 'wall' },  // Muro basso parte 2
+                    { x1: 20, y1: 350, x2: 20, y2: 20, type: 'wall' }    // Muro sinistro
+                ]
+            },
+            { 
+                id: 'veranda', 
+                name: 'Veranda / Terrasse',
+                walls: [
+                    { x1: 20, y1: 20, x2: 500, y2: 20, type: 'wall' },
+                    { x1: 500, y1: 20, x2: 500, y2: 400, type: 'wall' },
+                    { x1: 500, y1: 400, x2: 20, y2: 400, type: 'wall' },
+                    { x1: 20, y1: 400, x2: 20, y2: 20, type: 'wall' }
+                ]
+            }
         ];
         let currentRoomId = 'sala-principale';
         let isEditMode = false;
@@ -34,7 +55,6 @@
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 
-                // Verifica se c'è già una sessione attiva al caricamento della pagina
                 const { data: { session } } = await supabaseClient.auth.getSession();
                 if (session) {
                     await gestisciAccessoRiuscito(session.user);
@@ -46,8 +66,8 @@
             it: {
                 title: "SmartTable Manager",
                 calendar: "Calendario",
-                floorTitle: "Pianta Interattiva della Sala",
-                floorSubtitle: "Clicca su un tavolo per prenotare. In modalità modifica, trascinali o ruotali liberamente.",
+                floorTitle: "Pianta Interattiva & Muri Dinamici",
+                floorSubtitle: "Clicca su un tavolo per prenotare. In modalità modifica, sposta tavoli, modifica i muri o crea varchi e corridoi.",
                 timeFilter: "Fascia:",
                 legendTitle: "Legenda Tavoli:",
                 free: "Libero",
@@ -64,10 +84,11 @@
                 btnSave: "Salva Prenotazione",
                 seats: "Posti",
                 noBookings: "Nessuna prenotazione oggi.",
-                editModeOn: "Salva Posizioni (Fine Modifica)",
-                editModeOff: "Modifica Sala / Raum bearbeiten",
+                editModeOn: "Salva & Chiudi Modifica",
+                editModeOff: "Modifica Sala & Muri / Wände bearbeiten",
                 newTable: "Nuovo Tavolo",
                 newRoom: "+ Nuova Sala",
+                addWall: "+ Aggiungi Muro/Corridoio",
                 roomModalTitle: "Aggiungi Nuova Sala",
                 lblRoomName: "Nome Sala",
                 btnSaveRoom: "Crea Sala",
@@ -92,8 +113,8 @@
             de: {
                 title: "SmartTable Manager",
                 calendar: "Kalender",
-                floorTitle: "Interaktiver Tischplan",
-                floorSubtitle: "Klicken Sie auf einen Tisch zum Reservieren. Im Bearbeitungsmodus frei verschiebbar und drehbar.",
+                floorTitle: "Interaktiver Raum- & Wandplan",
+                floorSubtitle: "Klicken zum Reservieren. Im Bearbeitungsmodus Tische, Wände und Durchgänge/Korridore anpassen.",
                 timeFilter: "Zeitfenster:",
                 legendTitle: "Tisch-Legende:",
                 free: "Frei",
@@ -110,10 +131,11 @@
                 btnSave: "Reservierung speichern",
                 seats: "Plätze",
                 noBookings: "Keine Reservierungen.",
-                editModeOn: "Positionen speichern (Fertig)",
-                editModeOff: "Raum bearbeiten",
+                editModeOn: "Speichern & Fertig",
+                editModeOff: "Raum & Wände bearbeiten",
                 newTable: "Neuer Tisch",
                 newRoom: "+ Neuer Saal",
+                addWall: "+ Wand / Korridor hinzufügen",
                 roomModalTitle: "Neuen Saal hinzufügen",
                 lblRoomName: "Saalname",
                 btnSaveRoom: "Saal erstellen",
@@ -144,7 +166,7 @@
             const password = document.getElementById('login-password').value;
 
             if (!supabaseClient) {
-                alert("Supabase non è ancora pronto. Riprova tra un secondo.");
+                alert("Supabase non è ancora pronto.");
                 return;
             }
 
@@ -169,31 +191,18 @@
                 currentRestaurantId = 'tutti';
                 currentRestaurantName = 'Admin Globale';
             } else {
-                // Legge dalla tabella profiles sbloccata
-                const { data: profile, error: profileError } = await supabaseClient
+                const { data: profile } = await supabaseClient
                     .from('profiles')
                     .select('restaurant_id, restaurant_name')
                     .eq('id', user.id)
                     .single();
 
-                if (profileError || !profile) {
-                    // Fallback se l'id non corrisponde direttamente ma c'è un record collegato o per email/restaurant_id
-                    const { data: profileByRest } = await supabaseClient
-                        .from('profiles')
-                        .select('restaurant_id, restaurant_name')
-                        .limit(1)
-                        .single();
-                        
-                    if (profileByRest) {
-                        currentRestaurantId = profileByRest.restaurant_id;
-                        currentRestaurantName = profileByRest.restaurant_name || 'SportWell Manager';
-                    } else {
-                        currentRestaurantId = 'SportwellMals';
-                        currentRestaurantName = 'SportWell Mals';
-                    }
-                } else {
+                if (profile) {
                     currentRestaurantId = profile.restaurant_id;
                     currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
+                } else {
+                    currentRestaurantId = 'SportwellMals';
+                    currentRestaurantName = 'SportWell Mals';
                 }
             }
 
@@ -218,24 +227,20 @@
                     queryBookings = queryBookings.eq('restaurant_id', currentRestaurantId);
                 }
 
-                const { data: tablesData, error: tablesError } = await queryTables;
-                if (tablesError) throw tablesError;
-                
+                const { data: tablesData } = await queryTables;
                 tables = (tablesData || []).map(t => ({
                     id: t.id,
                     table_number: t.table_number,
                     seats: t.seats,
                     shape: t.shape,
-                    pos_x: t.pos_x ?? 20,
-                    pos_y: t.pos_y ?? 20,
+                    pos_x: t.pos_x ?? 50,
+                    pos_y: t.pos_y ?? 50,
                     rotation: t.rotation ?? 0,
                     room_id: t.room_id || 'sala-principale',
                     restaurant_id: t.restaurant_id
                 }));
 
-                const { data: bookingsData, error: bookingsError } = await queryBookings;
-                if (bookingsError) throw bookingsError;
-                
+                const { data: bookingsData } = await queryBookings;
                 bookings = (bookingsData || []).map(b => ({
                     id: b.id,
                     tableId: b.table_id,
@@ -289,6 +294,7 @@
             document.getElementById('btn-save').innerText = t.btnSave;
             document.getElementById('txt-add-table').innerText = t.newTable;
             document.getElementById('txt-add-room').innerText = t.newRoom;
+            document.getElementById('txt-add-wall').innerText = t.addWall;
             document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
             document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
             document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
@@ -300,11 +306,7 @@
             document.getElementById('th-actions').innerText = t.thActions;
 
             const editTxtSpan = document.getElementById('txt-edit-mode');
-            if (isEditMode) {
-                editTxtSpan.innerText = t.editModeOn;
-            } else {
-                editTxtSpan.innerText = t.editModeOff;
-            }
+            editTxtSpan.innerText = isEditMode ? t.editModeOn : t.editModeOff;
 
             renderRooms();
             renderCalendar();
@@ -344,12 +346,29 @@
             if (!roomName) return;
 
             const newId = 'sala-' + Date.now();
-            rooms.push({ id: newId, name: roomName });
+            rooms.push({ 
+                id: newId, 
+                name: roomName,
+                walls: [
+                    { x1: 20, y1: 20, x2: 600, y2: 20, type: 'wall' },
+                    { x1: 600, y1: 20, x2: 600, y2: 400, type: 'wall' },
+                    { x1: 600, y1: 400, x2: 20, y2: 400, type: 'wall' },
+                    { x1: 20, y1: 400, x2: 20, y2: 20, type: 'wall' }
+                ]
+            });
             currentRoomId = newId;
 
             closeRoomConfigModal();
             document.getElementById('new-room-name').value = '';
             renderRooms();
+            renderTables();
+        }
+
+        function addCustomWall() {
+            const room = rooms.find(r => r.id === currentRoomId);
+            if (!room) return;
+            // Aggiunge un muro divisorio o corridoio interno di default modificabile
+            room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
             renderTables();
         }
 
@@ -465,6 +484,39 @@
             const currentDateStr = formatDateKey(currentDate);
             const timeFilter = document.getElementById('filter-time').value;
 
+            const roomObj = rooms.find(r => r.id === currentRoomId) || rooms[0];
+
+            // 1. RENDERIZZA I MURI E LE PORTE / CORRIDOI DELLA SALA
+            if (roomObj && roomObj.walls) {
+                roomObj.walls.forEach((wall, index) => {
+                    const wallEl = document.createElement('div');
+                    wallEl.className = absoluteWallClass(wall);
+                    
+                    if (wall.type === 'door') {
+                        wallEl.innerHTML = `<span class="text-[9px] text-amber-700 font-bold bg-amber-100 px-1 rounded absolute -top-3 left-1/2 -translate-x-1/2">Varco / Porta</span>`;
+                    }
+
+                    // Se siamo in modalità modifica, permetti di trascinare i capi del muro o di eliminarlo/cambiare tipo
+                    if (isEditMode) {
+                        wallEl.classList.add('cursor-pointer', 'ring-1', 'ring-indigo-300');
+                        wallEl.title = "Clicca per cambiare in Muro o Porta / Corridoio";
+                        wallEl.onclick = () => {
+                            wall.type = wall.type === 'wall' ? 'door' : 'wall';
+                            renderTables();
+                        };
+                        
+                        // Maniglie per trascinare gli estremi del muro
+                        const handle1 = createWallHandle(wall, 'start', index);
+                        const handle2 = createWallHandle(wall, 'end', index);
+                        canvas.appendChild(handle1);
+                        canvas.appendChild(handle2);
+                    }
+
+                    canvas.appendChild(wallEl);
+                });
+            }
+
+            // 2. RENDERIZZA I TAVOLI NELLA SALA
             const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
 
             roomTables.forEach(table => {
@@ -493,12 +545,12 @@
                 let height = table.seats <= 8 ? 90 : 100;
 
                 const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
-                const posX = table.pos_x ?? 20;
-                const posY = table.pos_y ?? 20;
+                const posX = table.pos_x ?? 50;
+                const posY = table.pos_y ?? 50;
                 const rotation = table.rotation ?? 0;
 
                 const tableEl = document.createElement('div');
-                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md`;
+                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md z-10`;
                 tableEl.style.left = `${posX}px`;
                 tableEl.style.top = `${posY}px`;
                 tableEl.style.width = `${width}px`;
@@ -533,27 +585,216 @@
 
                 if (isEditMode) {
                     tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
-                    enableDrag(tableEl, table.id, width, height);
+                    enableTableDrag(tableEl, table.id, width, height);
                 }
 
                 canvas.appendChild(tableEl);
             });
         }
 
-        function enableDrag(element, tableId, width, height) {
+        // Calcola la posizione CSS per disegnare una linea (muro o porta) tra (x1,y1) e (x2,y2)
+        function absoluteWallClass(wall) {
+            const x1 = wall.x1, y1 = wall.y1, x2 = wall.x2, y2 = wall.y2;
+            const length = Math.hypot(x2 - x1, y2 - y1);
+            const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+            let baseStyle = `absolute h-2 origin-top-left rounded-sm transition-all `;
+            if (wall.type === 'door') {
+                baseStyle += `bg-amber-300 border border-dashed border-amber-500 opacity-75`;
+            } else {
+                baseStyle += `bg-slate-700 shadow-sm`;
+            }
+            
+            return `${baseStyle}`;
+        }
+
+        // Funzione per generare elementi DOM dei muri posizionati correttamente geometricamente
+        // Sovrascriviamo il rendering nel canvas applicando style.left, top, width, transform
+        const _origRenderTables = renderTables;
+        renderTables = function() {
+            const canvas = document.getElementById('floor-canvas');
+            canvas.innerHTML = '';
+            const currentDateStr = formatDateKey(currentDate);
+            const timeFilter = document.getElementById('filter-time').value;
+            const roomObj = rooms.find(r => r.id === currentRoomId) || rooms[0];
+
+            // Render muri geometrici
+            if (roomObj && roomObj.walls) {
+                roomObj.walls.forEach((wall, wallIndex) => {
+                    const dx = wall.x2 - wall.x1;
+                    const dy = wall.y2 - wall.y1;
+                    const length = Math.sqrt(dx * dx + dy * dy);
+                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+                    const wallDiv = document.createElement('div');
+                    const isDoor = wall.type === 'door';
+                    wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-3' : 'bg-slate-700 h-2'} rounded transition-all`;
+                    wallDiv.style.left = `${wall.x1}px`;
+                    wallDiv.style.top = `${wall.y1}px`;
+                    wallDiv.style.width = `${length}px`;
+                    wallDiv.style.transformOrigin = '0 0';
+                    wallDiv.style.transform = `rotate(${angle}deg)`;
+
+                    if (isDoor) {
+                        wallDiv.innerHTML = `<span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold text-amber-800 bg-amber-100 px-1 rounded pointer-events-none">Varco/Corridoio</span>`;
+                    }
+
+                    if (isEditMode) {
+                        wallDiv.classList.add('cursor-pointer', 'ring-2', 'ring-indigo-400');
+                        wallDiv.title = "Clicca per convertire tra Muro fisso e Corridoio/Varco";
+                        wallDiv.onclick = () => {
+                            wall.type = wall.type === 'wall' ? 'door' : 'wall';
+                            renderTables();
+                        };
+
+                        // Maniglia punto iniziale
+                        const h1 = document.createElement('div');
+                        h1.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-30 shadow flex items-center justify-center text-white text-[9px]';
+                        h1.style.left = `${wall.x1}px`;
+                        h1.style.top = `${wall.y1}px`;
+                        h1.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[8px]"></i>';
+                        enableWallDrag(h1, wall, 'start');
+                        canvas.appendChild(h1);
+
+                        // Maniglia punto finale
+                        const h2 = document.createElement('div');
+                        h2.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-30 shadow flex items-center justify-center text-white text-[9px]';
+                        h2.style.left = `${wall.x2}px`;
+                        h2.style.top = `${wall.y2}px`;
+                        h2.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[8px]"></i>';
+                        enableWallDrag(h2, wall, 'end');
+                        canvas.appendChild(h2);
+                    }
+
+                    canvas.appendChild(wallDiv);
+                });
+            }
+
+            // Richiama il rendering standard dei tavoli
+            renderTableElements(canvas, currentDateStr, timeFilter);
+        };
+
+        function enableWallDrag(handleEl, wallObj, pointType) {
+            let isDragging = false;
+            handleEl.style.touchAction = 'none';
+
+            handleEl.addEventListener('pointerdown', (e) => {
+                if (!isEditMode) return;
+                isDragging = true;
+                handleEl.setPointerCapture(e.pointerId);
+                e.stopPropagation();
+            });
+
+            handleEl.addEventListener('pointermove', (e) => {
+                if (!isDragging || !isEditMode) return;
+                const canvas = document.getElementById('floor-canvas');
+                const rect = canvas.getBoundingClientRect();
+                
+                let newX = e.clientX - rect.left;
+                let newY = e.clientY - rect.top;
+
+                if (pointType === 'start') {
+                    wallObj.x1 = Math.max(0, Math.min(newX, canvas.clientWidth));
+                    wallObj.y1 = Math.max(0, Math.min(newY, canvas.clientHeight));
+                } else {
+                    wallObj.x2 = Math.max(0, Math.min(newX, canvas.clientWidth));
+                    wallObj.y2 = Math.max(0, Math.min(newY, canvas.clientHeight));
+                }
+                renderTables();
+            });
+
+            handleEl.addEventListener('pointerup', (e) => {
+                isDragging = false;
+            });
+        }
+
+        function renderTableElements(canvas, currentDateStr, timeFilter) {
+            const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
+
+            roomTables.forEach(table => {
+                let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
+
+                if (timeFilter !== 'all') {
+                    const [fStart, fEnd] = timeFilter.split('-');
+                    tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
+                }
+
+                let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
+                let badgeColor = "bg-emerald-500";
+                let statusText = translations[currentLang].free;
+
+                if (tableBookings.length > 0 && timeFilter === 'all') {
+                    statusColor = "bg-amber-50 border-amber-300 text-amber-900";
+                    badgeColor = "bg-amber-500";
+                    statusText = `${tableBookings.length} ris.`;
+                } else if (tableBookings.length > 0) {
+                    statusColor = "bg-rose-50 border-rose-300 text-rose-900";
+                    badgeColor = "bg-rose-500";
+                    statusText = translations[currentLang].full;
+                }
+
+                let width = table.seats <= 2 ? 70 : table.seats <= 4 ? 90 : table.seats <= 8 ? 120 : 150;
+                let height = table.seats <= 8 ? 90 : 100;
+
+                const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
+                const posX = table.pos_x ?? 50;
+                const posY = table.pos_y ?? 50;
+                const rotation = table.rotation ?? 0;
+
+                const tableEl = document.createElement('div');
+                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md z-20`;
+                tableEl.style.left = `${posX}px`;
+                tableEl.style.top = `${posY}px`;
+                tableEl.style.width = `${width}px`;
+                tableEl.style.height = `${height}px`;
+                tableEl.style.transform = `rotate(${rotation}deg)`;
+
+                let editDeleteBtnHtml = '';
+                if (isEditMode) {
+                    editDeleteBtnHtml = `
+                        <button onclick="event.stopPropagation(); deleteTable('${table.id}')" class="absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
+                            <i class="fa-solid fa-xmark"></i>
+                        </button>
+                    `;
+                }
+
+                tableEl.innerHTML = `
+                    ${editDeleteBtnHtml}
+                    <div class="flex justify-between items-start pointer-events-none">
+                        <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
+                        <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
+                    </div>
+                    <div class="text-center pointer-events-none my-auto">
+                        <h3 class="text-sm font-black">${table.table_number}</h3>
+                        <div class="text-[9px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
+                    </div>
+                    <div class="text-[9px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
+                `;
+
+                tableEl.addEventListener('click', () => {
+                    if (!isEditMode) openTableModal(table.id);
+                });
+
+                if (isEditMode) {
+                    tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
+                    enableTableDrag(tableEl, table.id, width, height);
+                }
+
+                canvas.appendChild(tableEl);
+            });
+        }
+
+        function enableTableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
-
             element.style.touchAction = 'none';
 
             element.addEventListener('pointerdown', (e) => {
                 if (!isEditMode) return;
                 isDragging = true;
                 element.setPointerCapture(e.pointerId);
-                
                 startX = e.clientX - element.getBoundingClientRect().left;
                 startY = e.clientY - element.getBoundingClientRect().top;
-                
                 element.style.zIndex = 1000;
                 e.stopPropagation();
             });
@@ -579,8 +820,7 @@
             document.addEventListener('pointerup', (e) => {
                 if (isDragging) {
                     isDragging = false;
-                    element.style.zIndex = 1;
-                    
+                    element.style.zIndex = 20;
                     const newX = parseInt(element.style.left) || 0;
                     const newY = parseInt(element.style.top) || 0;
 
@@ -596,14 +836,7 @@
 
         async function updateTableCoordinates(tableId, posX, posY) {
             if (!supabaseClient) return;
-            const { error } = await supabaseClient
-                .from('tables')
-                .update({ pos_x: posX, pos_y: posY })
-                .eq('id', tableId);
-
-            if (error) {
-                console.error("Errore salvataggio posizione:", error.message);
-            }
+            await supabaseClient.from('tables').update({ pos_x: posX, pos_y: posY }).eq('id', tableId);
         }
 
         async function rotateTable(tableId) {
@@ -614,14 +847,7 @@
             renderTables();
 
             if (supabaseClient) {
-                const { error } = await supabaseClient
-                    .from('tables')
-                    .update({ rotation: tableObj.rotation })
-                    .eq('id', tableId);
-
-                if (error) {
-                    console.error("Errore salvataggio rotazione:", error.message);
-                }
+                await supabaseClient.from('tables').update({ rotation: tableObj.rotation }).eq('id', tableId);
             }
         }
 
@@ -630,6 +856,7 @@
             const btnEdit = document.getElementById('btn-toggle-edit');
             const btnAddTable = document.getElementById('btn-add-table');
             const btnAddRoom = document.getElementById('btn-add-room');
+            const btnAddWall = document.getElementById('btn-add-wall');
             const t = translations[currentLang];
 
             if (isEditMode) {
@@ -637,11 +864,13 @@
                 document.getElementById('txt-edit-mode').innerText = t.editModeOn;
                 btnAddTable.classList.remove('hidden');
                 btnAddRoom.classList.remove('hidden');
+                btnAddWall.classList.remove('hidden');
             } else {
                 btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5";
                 document.getElementById('txt-edit-mode').innerText = t.editModeOff;
                 btnAddTable.classList.add('hidden');
                 btnAddRoom.classList.add('hidden');
+                btnAddWall.classList.add('hidden');
             }
             renderTables();
         }
@@ -667,8 +896,8 @@
                     table_number: tableNumber,
                     seats: seats,
                     shape: shape,
-                    pos_x: 20,
-                    pos_y: 20,
+                    pos_x: 50,
+                    pos_y: 50,
                     rotation: 0,
                     room_id: currentRoomId,
                     restaurant_id: currentRestaurantId
@@ -781,16 +1010,7 @@
 
         async function deleteBooking(bookingId) {
             if (!supabaseClient) return;
-            const { error } = await supabaseClient
-                .from('bookings')
-                .delete()
-                .eq('id', bookingId);
-
-            if (error) {
-                alert("Errore cancellazione: " + error.message);
-                return;
-            }
-
+            await supabaseClient.from('bookings').delete().eq('id', bookingId);
             await loadDataFromSupabase();
             closeModal();
             renderDailySummary();
@@ -798,41 +1018,18 @@
 
         async function deleteTable(tableId) {
             if (!supabaseClient) return;
-            
-            const confirmMsg = currentLang === 'de' 
-                ? "Möchten Sie diesen Tisch wirklich löschen? Alle zugehörigen Reservierungen werden ebenfalls entfernt." 
-                : "Vuoi davvero eliminare questo tavolo? Verranno rimosse anche tutte le prenotazioni associate.";
+            if (!confirm("Vuoi davvero eliminare questo tavolo?")) return;
 
-            if (!confirm(confirmMsg)) return;
-
-            try {
-                const { error: bookingError } = await supabaseClient
-                    .from('bookings')
-                    .delete()
-                    .eq('table_id', tableId);
-
-                if (bookingError) throw bookingError;
-
-                const { error: tableError } = await supabaseClient
-                    .from('tables')
-                    .delete()
-                    .eq('id', tableId);
-
-                if (tableError) throw tableError;
-
-                closeModal();
-                await loadDataFromSupabase();
-
-            } catch (err) {
-                console.error("Errore durante l'eliminazione del tavolo:", err.message);
-                alert("Errore durante l'eliminazione: " + err.message);
-            }
+            await supabaseClient.from('bookings').delete().eq('table_id', tableId);
+            await supabaseClient.from('tables').delete().eq('id', tableId);
+            closeModal();
+            await loadDataFromSupabase();
         }
     </script>
 </head>
 <body class="bg-gray-100 font-sans text-gray-800">
     
-    <!-- Sezione Login -->
+    <!-- Login Section -->
     <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
         <form onsubmit="eseguiLogin(event)" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
             <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
@@ -842,7 +1039,7 @@
         </form>
     </div>
     
-    <!-- CONTENITORE DELL'APP -->
+    <!-- App Container -->
     <div id="app-container" style="display: none;">
 
         <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
@@ -853,7 +1050,7 @@
             <div class="flex items-center space-x-4">
                 <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
-                    <span id="txt-edit-mode">Modifica Sala / Bearbeiten</span>
+                    <span id="txt-edit-mode">Modifica Sala & Muri / Wände bearbeiten</span>
                 </button>
                 <div class="flex bg-gray-200 rounded-lg p-1">
                     <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
@@ -902,16 +1099,21 @@
                 
                 <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
                     <div id="rooms-tabs-container" class="flex flex-wrap gap-2"></div>
-                    <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
-                        <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
-                    </button>
+                    <div class="flex items-center space-x-2">
+                        <button id="btn-add-wall" onclick="addCustomWall()" class="hidden bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-700 transition shadow-sm">
+                            <i class="fa-solid fa-wall mr-1"></i> <span id="txt-add-wall">+ Muro / Corridoio</span>
+                        </button>
+                        <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+                            <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="bg-white p-5 rounded-xl shadow-sm relative">
                     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
-                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva della Sala</h2>
-                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, trascinali o ruotali liberamente.</p>
+                            <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva & Muri Dinamici</h2>
+                            <p id="floor-subtitle" class="text-xs text-gray-500">Clicca su un tavolo per prenotare. In modalità modifica, sposta muri e crea varchi o corridoi.</p>
                         </div>
                         <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
                             <div class="flex items-center space-x-2">
@@ -929,8 +1131,8 @@
                         </div>
                     </div>
 
-                    <!-- CANVAS -->
-                    <div id="floor-canvas" class="relative w-full h-[550px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner"></div>
+                    <!-- CANVAS DINAMICO -->
+                    <div id="floor-canvas" class="relative w-full h-[580px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner"></div>
                 </div>
             </div>
         </main>
@@ -1013,7 +1215,6 @@
                         <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
-                <!-- Checkbox privacy integrata nel form -->
                 <div class="flex items-start space-x-2 my-2">
                     <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
