@@ -1195,12 +1195,13 @@
                         <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
-                <div class="flex items-start space-x-2 my-2">
-                    <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-                    <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
-                        Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *
-                    </label>
-                </div>
+               <!-- Checkbox Privacy (Visibile solo se serve o gestito in modo smart) -->
+                <div class="flex items-start space-x-2 my-2" id="privacy-container">
+                <input type="checkbox" id="privacy-consent" class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
+                    Il cliente ha accettato l'Informativa sulla Privacy e il trattamento dei dati. *
+            </label>
+            </div>
                 <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
             </form>
         </div>
