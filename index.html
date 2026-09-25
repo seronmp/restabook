@@ -529,7 +529,8 @@
                     wallDiv.style.transform = `rotate(${angle}deg)`;
 
                     if (isDoor) {
-                        wallDiv.innerHTML = `<span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold text-amber-800 bg-amber-100 px-1 rounded pointer-events-none">Tür / Durchgang</span>`;
+                        const doorLabel = currentLang === 'de' ? 'Tür / Durchgang' : 'Porta / Varco';
+                        wallDiv.innerHTML = `<span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold text-amber-800 bg-amber-100 px-1 rounded pointer-events-none">${doorLabel}</span>`;
                     }
 
                     if (isEditMode) {
@@ -538,13 +539,13 @@
 
                         const midControl = document.createElement('div');
                         midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90';
-                     const splitLabel = currentLang === 'de' ? 'Teilen' : 'Dividi';
+                        
+                        const splitLabel = currentLang === 'de' ? 'Teilen' : 'Dividi';
                         const deleteLabel = currentLang === 'de' ? 'Löschen' : 'Elimina';
 
                         midControl.innerHTML = `
-                            <button onclick="event.stopPropagation(); splitWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="Dividi Muro">${splitLabel}</button>
-                            <button onclick="event.stopPropagation(); removeWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700" title="Elimina Muro"><i class="fa-solid fa-xmark"></i></button>
-                    `;
+                            <button onclick="event.stopPropagation(); splitWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="${splitLabel}">${splitLabel}</button>
+                            <button onclick="event.stopPropagation(); removeWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700" title="${deleteLabel}"><i class="fa-solid fa-xmark"></i></button>
                         `;
                         wallDiv.appendChild(midControl);
 
@@ -626,7 +627,6 @@
                     `;
                 }
 
-                // Modifica diretta dei posti direttamente sul tavolo senza aprire modali
                 let seatsControlHtml = isEditMode ? `
                     <div class="flex items-center justify-center space-x-1 my-auto bg-white/80 rounded px-1 py-0.5 z-30 shadow-xs" onclick="event.stopPropagation();">
                         <span class="text-[9px] font-bold text-gray-700">Posti:</span>
@@ -657,7 +657,6 @@
                     tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
                     enableTableDrag(tableEl, table.id, width, height);
                     
-                    // Attiva il ridimensionamento tramite la maniglia dedicata
                     setTimeout(() => {
                         const resizeHandle = document.getElementById(`resize-handle-${table.id}`);
                         if (resizeHandle) {
@@ -760,7 +759,6 @@
             document.addEventListener('pointerup', onPointerUp);
         }
 
-        // Funzione per il ridimensionamento dinamico del tavolo
         function enableTableResize(handleEl, tableEl, tableId) {
             let isResizing = false;
             let startX, startY, startWidth, startHeight;
