@@ -30,9 +30,15 @@
         let currentRoomId = 'sala-principale';
         let isEditMode = false;
 
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             if (window.supabase) {
                 supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                
+                // Verifica se c'è già una sessione attiva al caricamento della pagina
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                if (session) {
+                    await gestisciAccessoRiuscito(session.user);
+                }
             }
         });
 
@@ -152,15 +158,18 @@
                 return;
             }
 
-            const user = authData.user;
+            await gestisciAccessoRiuscito(authData.user);
+        }
 
+        async function gestisciAccessoRiuscito(user) {
             document.getElementById('login-container').style.display = 'none';
             document.getElementById('app-container').style.display = 'block';
 
-            if (email === 'admin@admin.com') {
+            if (user.email === 'admin@admin.com') {
                 currentRestaurantId = 'tutti';
                 currentRestaurantName = 'Admin Globale';
             } else {
+                // Legge dalla tabella profiles sbloccata
                 const { data: profile, error: profileError } = await supabaseClient
                     .from('profiles')
                     .select('restaurant_id, restaurant_name')
@@ -168,12 +177,24 @@
                     .single();
 
                 if (profileError || !profile) {
-                    alert("Nessun profilo ristorante associato a questo utente.");
-                    return;
+                    // Fallback se l'id non corrisponde direttamente ma c'è un record collegato o per email/restaurant_id
+                    const { data: profileByRest } = await supabaseClient
+                        .from('profiles')
+                        .select('restaurant_id, restaurant_name')
+                        .limit(1)
+                        .single();
+                        
+                    if (profileByRest) {
+                        currentRestaurantId = profileByRest.restaurant_id;
+                        currentRestaurantName = profileByRest.restaurant_name || 'SportWell Manager';
+                    } else {
+                        currentRestaurantId = 'SportwellMals';
+                        currentRestaurantName = 'SportWell Mals';
+                    }
+                } else {
+                    currentRestaurantId = profile.restaurant_id;
+                    currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
                 }
-
-                currentRestaurantId = profile.restaurant_id;
-                currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
             }
 
             document.getElementById('app-title').innerText = currentRestaurantName;
@@ -519,19 +540,16 @@
             });
         }
 
-        // Funzione aggiornata con Pointer Events per piena compatibilità iPhone/touch e desktop
         function enableDrag(element, tableId, width, height) {
             let isDragging = false;
             let startX, startY;
 
-            element.style.touchAction = 'none'; // Evita lo scroll della pagina su iOS durante il trascinamento
+            element.style.touchAction = 'none';
 
             element.addEventListener('pointerdown', (e) => {
                 if (!isEditMode) return;
                 isDragging = true;
                 element.setPointerCapture(e.pointerId);
-                
-                const canvas = document.getElementById('floor-canvas');
                 
                 startX = e.clientX - element.getBoundingClientRect().left;
                 startY = e.clientY - element.getBoundingClientRect().top;
@@ -952,13 +970,6 @@
         </main>
     </div>
     
-<!-- Aggiungi questo blocco dentro il tuo <form id="booking-form"> prima del pulsante di invio -->
-<div class="flex items-start space-x-2 my-3">
-    <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
-    <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
-        Ho letto e accetto l'<a href="privacy.html" target="_blank" class="text-indigo-600 underline">Informativa sulla Privacy</a> e acconsento al trattamento dei miei dati per la gestione della prenotazione. *
-    </label>
-</div>
     <!-- Modals -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
@@ -1002,6 +1013,13 @@
                         <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
+                <!-- Checkbox privacy integrata nel form -->
+                <div class="flex items-start space-x-2 my-2">
+                    <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+                    <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight">
+                        Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *
+                    </label>
+                </div>
                 <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
             </form>
         </div>
@@ -1044,8 +1062,8 @@
                 <button type="submit" class="w-full bg-emerald-600 text-white font-medium py-2 rounded-lg hover:bg-emerald-700 transition mt-2">Crea Sala</button>
 
                 <footer class="text-center py-4 text-xs text-gray-400 space-x-4">
-       <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
-<a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
+                    <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
+                    <a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
                 </footer>
             </form>
         </div>
