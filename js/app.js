@@ -37,13 +37,13 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
-        const { data: bookingsData } = await queryBookings;
+      const { data: bookingsData } = await queryBookings;
         state.bookings = (bookingsData || []).map(b => ({
             id: b.id,
             tableId: b.table_id,
             date: b.date,
-            startTime: b.start_time.substring(0, 5),
-            endTime: b.end_time.substring(0, 5),
+            startTime: b.start_time ? b.start_time.substring(0, 5) : '',
+            endTime: b.end_time ? b.end_time.substring(0, 8) : '',
             name: b.name,
             guests: b.guests,
             phone: b.phone
