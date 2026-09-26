@@ -7,14 +7,49 @@ setTimeout(async () => {
     if (typeof window.supabase !== 'undefined') {
         sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
         
-        // 1. SESSIONE: Salta login se già loggato
         const { data } = await sbClient.auth.getSession();
         if (data && data.session) {
             const loginCont = document.getElementById('login-container');
             const appCont = document.getElementById('app-container');
             if (loginCont) loginCont.style.display = 'none';
             if (appCont) appCont.style.display = 'block'; 
-         // 3. FUNZIONE BOTTONI: Crea il menu Superadmin con selettore ristoranti
+            creaBottoniAdmin();
+        }
+    }
+
+    const oldForm = document.getElementById('login-form');
+    if (oldForm && sbClient) {
+        const newForm = oldForm.cloneNode(true);
+        oldForm.parentNode.replaceChild(newForm, oldForm);
+
+        newForm.addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            
+            const btn = newForm.querySelector('button');
+            if (btn) btn.innerText = "Accesso in corso...";
+
+            const emailInput = document.getElementById('login-email').value;
+            const passwordInput = document.getElementById('login-password').value;
+
+            const { data, error } = await sbClient.auth.signInWithPassword({
+                email: emailInput,
+                password: passwordInput
+            });
+
+            if (error) {
+                alert("Errore di accesso: " + error.message);
+                if (btn) btn.innerText = "Accedi";
+            } else if (data.user) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'block'; 
+                
+                window.history.pushState({}, '', '?p=/admin');
+                creaBottoniAdmin();
+            }
+        });
+    }
+
+    // UNICA FUNZIONE PER CREARE I BOTTONI E IL MENU A TENDINA DEI RISTORANTI
     async function creaBottoniAdmin() {
         if (!document.getElementById('admin-super-menu')) {
             const adminMenu = document.createElement('div');
@@ -52,18 +87,15 @@ setTimeout(async () => {
                         selectDropdown.appendChild(opt);
                     });
 
-                    // Recupera l'ultimo ristorante selezionato dal localStorage se esiste
                     const savedRestId = localStorage.getItem('current_restaurant_id');
                     if (savedRestId) {
                         selectDropdown.value = savedRestId;
                     }
 
-                    // Quando cambi ristorante, memorizziamo l'ID e ricarichiamo/aggiorniamo la vista
                     selectDropdown.addEventListener('change', (e) => {
                         const selectedId = e.target.value;
                         if (selectedId) {
                             localStorage.setItem('current_restaurant_id', selectedId);
-                            // Esegue un refresh della pagina o lancia l'evento di cambio ristorante
                             window.location.reload();
                         } else {
                             localStorage.removeItem('current_restaurant_id');
@@ -71,37 +103,6 @@ setTimeout(async () => {
                     });
                 }
             }
-
-            document.getElementById('btn-create-restaurant').addEventListener('click', () => {
-                window.location.href = 'register.html';
-            });
-
-            document.getElementById('btn-logout').addEventListener('click', async () => {
-                if (sbClient) await sbClient.auth.signOut();
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = window.location.pathname; 
-            });
-        }
-    }
-    // 3. FUNZIONE BOTTONI: Crea il menu Superadmin
-    function creaBottoniAdmin() {
-        if (!document.getElementById('admin-super-menu')) {
-            const adminMenu = document.createElement('div');
-            adminMenu.id = 'admin-super-menu';
-            adminMenu.style.position = 'fixed';
-            adminMenu.style.top = '12px';
-            adminMenu.style.right = '350px'; 
-            adminMenu.style.zIndex = '9999';
-            adminMenu.style.display = 'flex';
-            adminMenu.style.gap = '10px';
-
-            adminMenu.innerHTML = `
-                <button id="btn-create-restaurant" style="background-color: white; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
-                <button id="btn-logout" style="background-color: white; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Esci</button>
-            `;
-
-            document.body.appendChild(adminMenu);
 
             document.getElementById('btn-create-restaurant').addEventListener('click', () => {
                 window.location.href = 'register.html';
@@ -123,7 +124,7 @@ setTimeout(async () => {
 }, 1000);
 // --- FINE SUPER-PATCH ADMIN ---
 
-// --- INIZIO ATTIVAZIONE BOTTONE MODIFICA SALA ---
+// --- ATTIVAZIONE BOTTONE MODIFICA SALA ---
 setTimeout(() => {
     let isEditMode = false;
     const btnToggleEdit = document.getElementById('btn-toggle-edit');
