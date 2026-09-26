@@ -845,6 +845,59 @@ function enableTableDrag(element, tableId, width, height) {
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerUp);
 }
+
+function enableTableDrag(element, tableId, width, height) {
+    let isDragging = false;
+    let startX, startY;
+    element.style.touchAction = 'none';
+
+    element.addEventListener('pointerdown', (e) => {
+        if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
+        isDragging = true;
+        element.setPointerCapture(e.pointerId);
+        startX = e.clientX - element.getBoundingClientRect().left;
+        startY = e.clientY - element.getBoundingClientRect().top;
+        element.style.zIndex = 1000;
+        e.stopPropagation();
+    });
+
+    const onPointerMove = (e) => {
+        if (!isDragging || !isEditMode) return;
+        const canvas = document.getElementById('floor-canvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        let newX = e.clientX - rect.left - startX;
+        let newY = e.clientY - rect.top - startY;
+
+        const maxX = canvas.clientWidth - width - 10;
+        const maxY = canvas.clientHeight - height - 10;
+
+        newX = Math.max(5, Math.min(newX, maxX));
+        newY = Math.max(5, Math.min(newY, maxY));
+
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
+    };
+
+    const onPointerUp = () => {
+        if (isDragging) {
+            isDragging = false;
+            element.style.zIndex = 20;
+            const newX = parseInt(element.style.left) || 0;
+            const newY = parseInt(element.style.top) || 0;
+
+            const tableObj = tables.find(t => t.id === tableId);
+            if (tableObj) {
+                tableObj.pos_x = newX;
+                tableObj.pos_y = newY;
+                updateTableCoordinates(tableId, newX, newY);
+            }
+        }
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+}
             };
 
             document.addEventListener('pointermove', onPointerMove);
