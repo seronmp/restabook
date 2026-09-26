@@ -33,49 +33,6 @@
         </form>
         <div id="loginMessage" class="message"></div>
     </div>
-
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const messageDiv = document.getElementById('loginMessage');
-            messageDiv.style.color = '#333';
-            messageDiv.textContent = 'Accesso in corso...';
-
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('login-password').value;
-
-            try {
-                const response = await fetch('http://localhost:3000/api/restaurants/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password })
-                });
-
-                const result = await response.json();
-
-                if (!response.ok) {
-                    throw new Error(result.error || 'Errore durante il login');
-                }
-
-                // Salviamo le informazioni del ristorante nel browser
-                localStorage.setItem('restaurant_id', result.restaurant.id);
-                localStorage.setItem('restaurant_name', result.restaurant.name);
-                localStorage.setItem('restaurant_logo', result.restaurant.logo_url || '');
-
-                messageDiv.style.color = 'green';
-                messageDiv.textContent = 'Login riuscito! Reindirizzamento...';
-
-                // Reindirizza alla pagina principale dell'app (es. index.html)
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 1000);
-
-            } cat (err) {
-                messageDiv.style.color = 'red';
-                messageDiv.textContent = err.message;
-            }
-        });
-    </script>
     <script>
 document.querySelector('form')?.addEventListener('submit', async (e) => {
     e.preventDefault(); // Fondamentale: impedisce alla pagina di ricaricarsi a vuoto
