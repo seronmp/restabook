@@ -19,9 +19,9 @@
     <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
         <form id="login-form" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
             <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
-            <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <input type="password" id="login-password" placeholder="Password" required class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <button type="submit" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
+            <input type="email" id="login-email" placeholder="Email" required autocomplete="username" class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input type="password" id="login-password" placeholder="Password" required autocomplete="current-password" class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button type="submit" id="login-btn" class="w-full py-3 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold text-sm transition">Accedi</button>
         </form>
     </div>
     
@@ -249,6 +249,40 @@
         <a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a>
         <script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
     </footer>
+
+    <!-- SCRIPT DI LOGIN AGGIUNTO PER BLOCCARE IL REFRESH -->
+    <script>
+        // 1. INIZIALIZZA SUPABASE (Inserisci i tuoi veri dati qui)
+const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // 2. GESTISCI IL CLICK SU "ACCEDI"
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault(); // Questo comando fondamentale impedisce al form di ricaricare la pagina
+
+            const emailInput = document.getElementById('login-email').value;
+            const passwordInput = document.getElementById('login-password').value;
+            const loginBtn = document.getElementById('login-btn');
+            
+            loginBtn.innerText = "Accesso in corso...";
+            loginBtn.disabled = true;
+
+            const { data, error } = await sbClient.auth.signInWithPassword({
+                email: emailInput,
+                password: passwordInput
+            });
+
+            if (error) {
+                alert("Errore di accesso: " + error.message);
+                loginBtn.innerText = "Accedi";
+                loginBtn.disabled = false;
+            } else if (data.user) {
+                // Ti reindirizza istantaneamente all'indirizzo admin vero e proprio
+                window.location.href = '?p=/admin'; 
+            }
+        });
+    </script>
 
     <!-- Script principale come Modulo -->
     <script type="module" src="./js/app.js"></script>
