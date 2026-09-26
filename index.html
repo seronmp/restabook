@@ -711,90 +711,140 @@
                 canvas.appendChild(tableEl);
             });
         }
+// --- FUNZIONE DI SNAP MAGNETICO E ALLINEAMENTO ---
+function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
+    let snappedX = x;
+    let snappedY = y;
 
-        function enableWallDrag(handleEl, wallObj, pointType) {
-            let isDragging = false;
-            handleEl.style.touchAction = 'none';
+    // 1. Snap a griglia geometrica (passo di 20px)
+    const gridSize = 20;
+    const gridX = Math.round(x / gridSize) * gridSize;
+    const gridY = Math.round(y / gridSize) * gridSize;
 
-            handleEl.addEventListener('pointerdown', (e) => {
-                if (!isEditMode) return;
-                isDragging = true;
-                handleEl.setPointerCapture(e.pointerId);
-                e.stopPropagation();
-            });
+    if (Math.abs(x - gridX) < snapThreshold) snappedX = gridX;
+    if (Math.abs(y - gridY) < snapThreshold) snappedY = gridY;
 
-            const onPointerMove = (e) => {
-                if (!isDragging || !isEditMode) return;
-                const canvas = document.getElementById('floor-canvas');
-                const rect = canvas.getBoundingClientRect();
-                
-                let newX = e.clientX - rect.left;
-                let newY = e.clientY - rect.top;
+    // 2. Snap magnetico verso le estremità di tutti gli altri muri della sala
+    if (roomObj && roomObj.walls) {
+        roomObj.walls.forEach(wall => {
+            const endpoints = [
+                { x: wall.x1, y: wall.y1 },
+                { x: wall.x2, y: wall.y2 }
+            ];
 
-                if (pointType === 'start') {
-                    wallObj.x1 = Math.max(0, Math.min(newX, canvas.clientWidth));
-                    wallObj.y1 = Math.max(0, Math.min(newY, canvas.clientHeight));
-                } else {
-                    wallObj.x2 = Math.max(0, Math.min(newX, canvas.clientWidth));
-                    wallObj.y2 = Math.max(0, Math.min(newY, canvas.clientHeight));
+            endpoints.forEach(pt => {
+                if (Math.abs(pt.x - x) < snapThreshold) {
+                    snappedX = pt.x;
                 }
-                renderTables();
-            };
-
-            const onPointerUp = () => {
-                if (isDragging) isDragging = false;
-            };
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-        }
-
-        function enableTableDrag(element, tableId, width, height) {
-            let isDragging = false;
-            let startX, startY;
-            element.style.touchAction = 'none';
-
-            element.addEventListener('pointerdown', (e) => {
-                if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
-                isDragging = true;
-                element.setPointerCapture(e.pointerId);
-                startX = e.clientX - element.getBoundingClientRect().left;
-                startY = e.clientY - element.getBoundingClientRect().top;
-                element.style.zIndex = 1000;
-                e.stopPropagation();
+                if (Math.abs(pt.y - y) < snapThreshold) {
+                    snappedY = pt.y;
+                }
             });
+        });
+    }
 
-            const onPointerMove = (e) => {
-                if (!isDragging || !isEditMode) return;
-                const canvas = document.getElementById('floor-canvas');
-                const rect = canvas.getBoundingClientRect();
-                
-                let newX = e.clientX - rect.left - startX;
-                let newY = e.clientY - rect.top - startY;
+    return { x: snappedX, y: snappedY };
+}
 
-                const maxX = canvas.clientWidth - width - 10;
-                const maxY = canvas.clientHeight - height - 10;
+function enableWallDrag(handleEl, wallObj, pointType) {
+    let isDragging = false;
+    handleEl.style.touchAction = 'none';
 
-                newX = Math.max(5, Math.min(newX, maxX));
-                newY = Math.max(5, Math.min(newY, maxY));
+    handleEl.addEventListener('pointerdown', (e) => {
+        if (!isEditMode) return;
+        isDragging = true;
+        handleEl.setPointerCapture(e.pointerId);
+        e.stopPropagation();
+    });
 
-                element.style.left = `${newX}px`;
-                element.style.top = `${newY}px`;
-            };
+    const onPointerMove = (e) => {
+        if (!isDragging || !isEditMode) return;
+        const canvas = document.getElementById('floor-canvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        let rawX = e.clientX - rect.left;
+        let rawY = e.clientY - rect.top;
 
-            const onPointerUp = () => {
-                if (isDragging) {
-                    isDragging = false;
-                    element.style.zIndex = 20;
-                    const newX = parseInt(element.style.left) || 0;
-                    const newY = parseInt(element.style.top) || 0;
+        // Limiti all'interno del canvas
+        rawX = Math.max(0, Math.min(rawX, canvas.clientWidth));
+        rawY = Math.max(0, Math.min(rawY, canvas.clientHeight));
 
-                    const tableObj = tables.find(t => t.id === tableId);
-                    if (tableObj) {
-                        tableObj.pos_x = newX;
-                        tableObj.pos_y = newY;
-                        updateTableCoordinates(tableId, newX, newY);
-                    }
+        // Trova la stanza corrente per calcolare lo snap sugli altri muri
+        const roomObj = rooms.find(r => r.id === currentRoomId);
+
+        // Applica lo snap magnetico e di griglia
+        const snapped = applyMagneticSnap(rawX, rawY, roomObj);
+
+        if (pointType === 'start') {
+            wallObj.x1 = snapped.x;
+            wallObj.y1 = snapped.y;
+        } else {
+            wallObj.x2 = snapped.x;
+            wallObj.y2 = snapped.y;
+        }
+        renderTables();
+    };
+
+    const onPointerUp = () => {
+        if (isDragging) isDragging = false;
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+}
+
+function enableTableDrag(element, tableId, width, height) {
+    let isDragging = false;
+    let startX, startY;
+    element.style.touchAction = 'none';
+
+    element.addEventListener('pointerdown', (e) => {
+        if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
+        isDragging = true;
+        element.setPointerCapture(e.pointerId);
+        startX = e.clientX - element.getBoundingClientRect().left;
+        startY = e.clientY - element.getBoundingClientRect().top;
+        element.style.zIndex = 1000;
+        e.stopPropagation();
+    });
+
+    const onPointerMove = (e) => {
+        if (!isDragging || !isEditMode) return;
+        const canvas = document.getElementById('floor-canvas');
+        const rect = canvas.getBoundingClientRect();
+        
+        let newX = e.clientX - rect.left - startX;
+        let newY = e.clientY - rect.top - startY;
+
+        const maxX = canvas.clientWidth - width - 10;
+        const maxY = canvas.clientHeight - height - 10;
+
+        newX = Math.max(5, Math.min(newX, maxX));
+        newY = Math.max(5, Math.min(newY, maxY));
+
+        element.style.left = `${newX}px`;
+        element.style.top = `${newY}px`;
+    };
+
+    const onPointerUp = () => {
+        if (isDragging) {
+            isDragging = false;
+            element.style.zIndex = 20;
+            const newX = parseInt(element.style.left) || 0;
+            const newY = parseInt(element.style.top) || 0;
+
+            const tableObj = tables.find(t => t.id === tableId);
+            if (tableObj) {
+                tableObj.pos_x = newX;
+                tableObj.pos_y = newY;
+                updateTableCoordinates(tableId, newX, newY);
+            }
+        }
+    };
+
+    document.addEventListener('pointermove', onPointerMove);
+    document.addEventListener('pointerup', onPointerUp);
+}
                 }
             };
 
