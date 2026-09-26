@@ -34,6 +34,40 @@ setTimeout(async () => {
             localStorage.clear();
             sessionStorage.clear();
             window.location.href = window.location.pathname; 
+
+            // --- ATTIVAZIONE BOTTONE MODIFICA SALA ---
+let isEditMode = false;
+const btnToggleEdit = document.getElementById('btn-toggle-edit');
+const txtEditMode = document.getElementById('txt-edit-mode');
+const btnAddWall = document.getElementById('btn-add-wall');
+const btnAddRoom = document.getElementById('btn-add-room');
+const btnAddTable = document.getElementById('btn-add-table');
+
+if (btnToggleEdit) {
+    btnToggleEdit.addEventListener('click', () => {
+        isEditMode = !isEditMode; // Accende e spegne la modalità
+        
+        if (isEditMode) {
+            // STATO ACCESO: Bottone blu e mostra gli strumenti
+            btnToggleEdit.classList.replace('bg-gray-100', 'bg-indigo-600');
+            btnToggleEdit.classList.replace('text-gray-700', 'text-white');
+            if(txtEditMode) txtEditMode.innerText = "Chiudi Modifica / Schließen";
+            
+            if (btnAddWall) btnAddWall.classList.remove('hidden');
+            if (btnAddRoom) btnAddRoom.classList.remove('hidden');
+            if (btnAddTable) btnAddTable.classList.remove('hidden');
+        } else {
+            // STATO SPENTO: Bottone grigio e nasconde gli strumenti
+            btnToggleEdit.classList.replace('bg-indigo-600', 'bg-gray-100');
+            btnToggleEdit.classList.replace('text-white', 'text-gray-700');
+            if(txtEditMode) txtEditMode.innerText = "Modifica Sala & Muri / Wände bearbeiten";
+            
+            if (btnAddWall) btnAddWall.classList.add('hidden');
+            if (btnAddRoom) btnAddRoom.classList.add('hidden');
+            if (btnAddTable) btnAddTable.classList.add('hidden');
+        }
+    });
+}
         });
     }
 }
