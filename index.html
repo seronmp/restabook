@@ -310,7 +310,6 @@
 
             document.getElementById('txt-edit-mode').innerText = isEditMode ? t.editModeOn : t.editModeOff;
 
-            // Aggiorna etichetta privacy in base allo stato attuale del telefono
             checkClientPrivacy();
 
             renderRooms();
@@ -318,7 +317,6 @@
             renderTables();
         }
 
-        // --- CONTROLLO INTELLIGENTE PRIVACY CLIENTE ESISTENTE ---
         function checkClientPrivacy() {
             const phoneInput = document.getElementById('form-phone').value.trim();
             const privacyContainer = document.getElementById('privacy-container');
@@ -327,7 +325,6 @@
             const t = translations[currentLang];
 
             if (!phoneInput) {
-                // Se non è inserito alcun telefono, mostra il checkbox come obbligatorio per sicurezza
                 privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
                 privacyConsent.required = true;
                 privacyConsent.checked = false;
@@ -336,18 +333,15 @@
                 return;
             }
 
-            // Verifica se esiste già almeno una prenotazione passata con questo numero di telefono
             const existingClient = bookings.some(b => b.phone && b.phone.trim() === phoneInput);
 
             if (existingClient) {
-                // Cliente già noto: privacy già accettata in passato, saltiamo l'obbligo visivo
                 privacyConsent.checked = true;
                 privacyConsent.required = false;
                 privacyConsent.disabled = true;
                 privacyLabel.innerText = t.privacyText;
                 privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
             } else {
-                // Nuovo cliente: richiede spunta obbligatoria
                 privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
                 privacyConsent.required = true;
                 privacyConsent.checked = false;
@@ -711,189 +705,130 @@
                 canvas.appendChild(tableEl);
             });
         }
-// --- FUNZIONE DI SNAP MAGNETICO E ALLINEAMENTO ---
-function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
-    let snappedX = x;
-    let snappedY = y;
 
-    // 1. Snap a griglia geometrica (passo di 20px)
-    const gridSize = 20;
-    const gridX = Math.round(x / gridSize) * gridSize;
-    const gridY = Math.round(y / gridSize) * gridSize;
+        function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
+            let snappedX = x;
+            let snappedY = y;
 
-    if (Math.abs(x - gridX) < snapThreshold) snappedX = gridX;
-    if (Math.abs(y - gridY) < snapThreshold) snappedY = gridY;
+            const gridSize = 20;
+            const gridX = Math.round(x / gridSize) * gridSize;
+            const gridY = Math.round(y / gridSize) * gridSize;
 
-    // 2. Snap magnetico verso le estremità di tutti gli altri muri della sala
-    if (roomObj && roomObj.walls) {
-        roomObj.walls.forEach(wall => {
-            const endpoints = [
-                { x: wall.x1, y: wall.y1 },
-                { x: wall.x2, y: wall.y2 }
-            ];
+            if (Math.abs(x - gridX) < snapThreshold) snappedX = gridX;
+            if (Math.abs(y - gridY) < snapThreshold) snappedY = gridY;
 
-            endpoints.forEach(pt => {
-                if (Math.abs(pt.x - x) < snapThreshold) {
-                    snappedX = pt.x;
-                }
-                if (Math.abs(pt.y - y) < snapThreshold) {
-                    snappedY = pt.y;
-                }
+            if (roomObj && roomObj.walls) {
+                roomObj.walls.forEach(wall => {
+                    const endpoints = [
+                        { x: wall.x1, y: wall.y1 },
+                        { x: wall.x2, y: wall.y2 }
+                    ];
+
+                    endpoints.forEach(pt => {
+                        if (Math.abs(pt.x - x) < snapThreshold) {
+                            snappedX = pt.x;
+                        }
+                        if (Math.abs(pt.y - y) < snapThreshold) {
+                            snappedY = pt.y;
+                        }
+                    });
+                });
+            }
+
+            return { x: snappedX, y: snappedY };
+        }
+
+        function enableWallDrag(handleEl, wallObj, pointType) {
+            let isDragging = false;
+            handleEl.style.touchAction = 'none';
+
+            handleEl.addEventListener('pointerdown', (e) => {
+                if (!isEditMode) return;
+                isDragging = true;
+                handleEl.setPointerCapture(e.pointerId);
+                e.stopPropagation();
             });
-        });
-    }
 
-    return { x: snappedX, y: snappedY };
-}
+            const onPointerMove = (e) => {
+                if (!isDragging || !isEditMode) return;
+                const canvas = document.getElementById('floor-canvas');
+                const rect = canvas.getBoundingClientRect();
+                
+                let rawX = e.clientX - rect.left;
+                let rawY = e.clientY - rect.top;
 
-function enableWallDrag(handleEl, wallObj, pointType) {
-    let isDragging = false;
-    handleEl.style.touchAction = 'none';
+                rawX = Math.max(0, Math.min(rawX, canvas.clientWidth));
+                rawY = Math.max(0, Math.min(rawY, canvas.clientHeight));
 
-    handleEl.addEventListener('pointerdown', (e) => {
-        if (!isEditMode) return;
-        isDragging = true;
-        handleEl.setPointerCapture(e.pointerId);
-        e.stopPropagation();
-    });
+                const roomObj = rooms.find(r => r.id === currentRoomId);
+                const snapped = applyMagneticSnap(rawX, rawY, roomObj);
 
-    const onPointerMove = (e) => {
-        if (!isDragging || !isEditMode) return;
-        const canvas = document.getElementById('floor-canvas');
-        const rect = canvas.getBoundingClientRect();
-        
-        let rawX = e.clientX - rect.left;
-        let rawY = e.clientY - rect.top;
+                if (pointType === 'start') {
+                    wallObj.x1 = snapped.x;
+                    wallObj.y1 = snapped.y;
+                } else {
+                    wallObj.x2 = snapped.x;
+                    wallObj.y2 = snapped.y;
+                }
+                renderTables();
+            };
 
-        // Limiti all'interno del canvas
-        rawX = Math.max(0, Math.min(rawX, canvas.clientWidth));
-        rawY = Math.max(0, Math.min(rawY, canvas.clientHeight));
+            const onPointerUp = () => {
+                if (isDragging) isDragging = false;
+            };
 
-        // Trova la stanza corrente per calcolare lo snap sugli altri muri
-        const roomObj = rooms.find(r => r.id === currentRoomId);
-
-        // Applica lo snap magnetico e di griglia
-        const snapped = applyMagneticSnap(rawX, rawY, roomObj);
-
-        if (pointType === 'start') {
-            wallObj.x1 = snapped.x;
-            wallObj.y1 = snapped.y;
-        } else {
-            wallObj.x2 = snapped.x;
-            wallObj.y2 = snapped.y;
+            document.addEventListener('pointermove', onPointerMove);
+            document.addEventListener('pointerup', onPointerUp);
         }
-        renderTables();
-    };
 
-    const onPointerUp = () => {
-        if (isDragging) isDragging = false;
-    };
+        function enableTableDrag(element, tableId, width, height) {
+            let isDragging = false;
+            let startX, startY;
+            element.style.touchAction = 'none';
 
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-}
+            element.addEventListener('pointerdown', (e) => {
+                if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
+                isDragging = true;
+                element.setPointerCapture(e.pointerId);
+                startX = e.clientX - element.getBoundingClientRect().left;
+                startY = e.clientY - element.getBoundingClientRect().top;
+                element.style.zIndex = 1000;
+                e.stopPropagation();
+            });
 
-function enableTableDrag(element, tableId, width, height) {
-    let isDragging = false;
-    let startX, startY;
-    element.style.touchAction = 'none';
+            const onPointerMove = (e) => {
+                if (!isDragging || !isEditMode) return;
+                const canvas = document.getElementById('floor-canvas');
+                const rect = canvas.getBoundingClientRect();
+                
+                let newX = e.clientX - rect.left - startX;
+                let newY = e.clientY - rect.top - startY;
 
-    element.addEventListener('pointerdown', (e) => {
-        if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
-        isDragging = true;
-        element.setPointerCapture(e.pointerId);
-        startX = e.clientX - element.getBoundingClientRect().left;
-        startY = e.clientY - element.getBoundingClientRect().top;
-        element.style.zIndex = 1000;
-        e.stopPropagation();
-    });
+                const maxX = canvas.clientWidth - width - 10;
+                const maxY = canvas.clientHeight - height - 10;
 
-    const onPointerMove = (e) => {
-        if (!isDragging || !isEditMode) return;
-        const canvas = document.getElementById('floor-canvas');
-        const rect = canvas.getBoundingClientRect();
-        
-        let newX = e.clientX - rect.left - startX;
-        let newY = e.clientY - rect.top - startY;
+                newX = Math.max(5, Math.min(newX, maxX));
+                newY = Math.max(5, Math.min(newY, maxY));
 
-        const maxX = canvas.clientWidth - width - 10;
-        const maxY = canvas.clientHeight - height - 10;
+                element.style.left = `${newX}px`;
+                element.style.top = `${newY}px`;
+            };
 
-        newX = Math.max(5, Math.min(newX, maxX));
-        newY = Math.max(5, Math.min(newY, maxY));
+            const onPointerUp = () => {
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.zIndex = 20;
+                    const newX = parseInt(element.style.left) || 0;
+                    const newY = parseInt(element.style.top) || 0;
 
-        element.style.left = `${newX}px`;
-        element.style.top = `${newY}px`;
-    };
-
-    const onPointerUp = () => {
-        if (isDragging) {
-            isDragging = false;
-            element.style.zIndex = 20;
-            const newX = parseInt(element.style.left) || 0;
-            const newY = parseInt(element.style.top) || 0;
-
-            const tableObj = tables.find(t => t.id === tableId);
-            if (tableObj) {
-                tableObj.pos_x = newX;
-                tableObj.pos_y = newY;
-                updateTableCoordinates(tableId, newX, newY);
-            }
-        }
-    };
-
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerUp);
-}
-
-function enableTableDrag(element, tableId, width, height) {
-    let isDragging = false;
-    let startX, startY;
-    element.style.touchAction = 'none';
-
-    element.addEventListener('pointerdown', (e) => {
-        if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
-        isDragging = true;
-        element.setPointerCapture(e.pointerId);
-        startX = e.clientX - element.getBoundingClientRect().left;
-        startY = e.clientY - element.getBoundingClientRect().top;
-        element.style.zIndex = 1000;
-        e.stopPropagation();
-    });
-
-    const onPointerMove = (e) => {
-        if (!isDragging || !isEditMode) return;
-        const canvas = document.getElementById('floor-canvas');
-        const rect = canvas.getBoundingClientRect();
-        
-        let newX = e.clientX - rect.left - startX;
-        let newY = e.clientY - rect.top - startY;
-
-        const maxX = canvas.clientWidth - width - 10;
-        const maxY = canvas.clientHeight - height - 10;
-
-        newX = Math.max(5, Math.min(newX, maxX));
-        newY = Math.max(5, Math.min(newY, maxY));
-
-        element.style.left = `${newX}px`;
-        element.style.top = `${newY}px`;
-    };
-
-    const onPointerUp = () => {
-        if (isDragging) {
-            isDragging = false;
-            element.style.zIndex = 20;
-            const newX = parseInt(element.style.left) || 0;
-            const newY = parseInt(element.style.top) || 0;
-
-            const tableObj = tables.find(t => t.id === tableId);
-            if (tableObj) {
-                tableObj.pos_x = newX;
-                tableObj.pos_y = newY;
-                updateTableCoordinates(tableId, newX, newY);
-            }
-        }
-    };
+                    const tableObj = tables.find(t => t.id === tableId);
+                    if (tableObj) {
+                        tableObj.pos_x = newX;
+                        tableObj.pos_y = newY;
+                        updateTableCoordinates(tableId, newX, newY);
+                    }
+                }
+            };
 
             document.addEventListener('pointermove', onPointerMove);
             document.addEventListener('pointerup', onPointerUp);
@@ -1044,7 +979,6 @@ function enableTableDrag(element, tableId, width, height) {
             document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
             document.getElementById('form-table-id').value = tableId;
 
-            // Reset form e stato privacy alla apertura
             document.getElementById('booking-form').reset();
             checkClientPrivacy();
 
@@ -1336,11 +1270,9 @@ function enableTableDrag(element, tableId, width, height) {
                     </div>
                     <div>
                         <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
-                        <!-- Aggiunto evento oninput per controllare in tempo reale se il cliente è già noto -->
                         <input type="tel" id="form-phone" oninput="checkClientPrivacy()" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
-                <!-- Box privacy dinamico -->
                 <div class="flex items-start space-x-2 my-2" id="privacy-container">
                     <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight" id="privacy-label-text">
@@ -1387,12 +1319,12 @@ function enableTableDrag(element, tableId, width, height) {
                     <input type="text" id="new-room-name" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                 </div>
                 <button type="submit" class="w-full bg-emerald-600 text-white font-medium py-2 rounded-lg hover:bg-emerald-700 transition mt-2">Crea Sala</button>
-
-                <footer class="text-center py-4 text-xs text-gray-400 space-x-4">
-                    <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
-                    <a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
-                </footer>
             </form>
+
+            <footer class="text-center py-4 text-xs text-gray-400 space-x-4">
+                <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
+                <a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a><script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
+            </footer>
         </div>
     </div>
 </body>
