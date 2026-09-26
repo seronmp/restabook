@@ -82,16 +82,15 @@
                 waFields.style.display = 'block';
             } else {
                 waFields.style.display = 'none';
-                // Pulisce i campi se l'utente torna alla versione Base
                 document.getElementById('whatsapp_phone_id').value = '';
                 document.getElementById('whatsapp_token').value = '';
             }
         });
 
-        // Inserisci qui le tue credenziali pubbliche di Supabase
-        const SUPABASE_URL = 'IL_TUO_SUPABASE_URL';
-        const SUPABASE_ANON_KEY = 'IL_TUO_SUPABASE_ANON_KEY';
-        const supabaseClient = supabase.createClient(https://wqnqhmozprrxrcssesoq.supabase.co, eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY);
+        // Le tue chiavi esatte di Supabase
+        const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -99,7 +98,7 @@
             const submitBtn = document.querySelector('button[type="submit"]');
             
             messageDiv.style.color = '#333';
-            messageDiv.textContent = 'Creazione account in corso...';
+            messageDiv.textContent = 'Creazione account in corso su Supabase...';
             submitBtn.disabled = true;
 
             try {
@@ -113,14 +112,14 @@
 
                 let logo_url = '';
 
-                // 1. Upload Logo (se presente)
+                // 1. Upload Logo se presente
                 if (fileInput) {
                     const fileName = `${Date.now()}_${fileInput.name}`;
                     const { data: uploadData, error: uploadError } = await supabaseClient.storage
                         .from('logos') 
                         .upload(fileName, fileInput);
 
-                    if (uploadError) throw new Error('Errore durante il caricamento del logo: ' + uploadError.message);
+                    if (uploadError) throw new Error('Errore caricamento logo: ' + uploadError.message);
 
                     const { data: publicUrlData } = supabaseClient.storage
                         .from('logos')
@@ -129,31 +128,34 @@
                     logo_url = publicUrlData.publicUrl;
                 }
 
-                // 2. Invio al Backend
-                const response = await fetch('http://localhost:3000/api/restaurants/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        email,
-                        password,
-                        logo_url,
-                        plan, // Salviamo anche il piano scelto nel database
-                        whatsapp_phone_id,
-                        whatsapp_token
-                    })
+                // 2. Registrazione Utente (Authentication)
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email: email,
+                    password: password
                 });
 
-                const result = await response.json();
+                if (authError) throw new Error('Errore Auth: ' + authError.message);
 
-                if (!response.ok) {
-                    throw new Error(result.error || 'Errore nella registrazione');
-                }
+                // 3. Salvataggio dati del Ristorante nella tabella
+                // NOTA: Assicurati di avere una tabella chiamata 'restaurants' in Supabase
+                const { error: dbError } = await supabaseClient
+                    .from('restaurants')
+                    .insert([{
+                        id: authData.user?.id, 
+                        name: name,
+                        email: email,
+                        logo_url: logo_url,
+                        plan: plan,
+                        whatsapp_phone_id: whatsapp_phone_id,
+                        whatsapp_token: whatsapp_token
+                    }]);
+
+                if (dbError) throw new Error('Errore salvataggio tabella: ' + dbError.message);
 
                 messageDiv.style.color = 'green';
-                messageDiv.textContent = 'Registrazione completata con successo! ID: ' + result.restaurantId;
+                messageDiv.textContent = 'Registrazione completata con successo!';
                 document.getElementById('registerForm').reset();
-                document.getElementById('wa-fields').style.display = 'none'; // Resetta la visuale
+                document.getElementById('wa-fields').style.display = 'none'; 
 
             } catch (err) {
                 messageDiv.style.color = 'red';
@@ -163,5 +165,3 @@
             }
         });
     </script>
-</body>
-</html>
