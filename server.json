@@ -1,0 +1,36 @@
+// Rotta per il login del ristorante
+app.post('/api/restaurants/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        // 1. Cerca il ristorante tramite l'email
+        const { data: restaurant, error } = await supabase
+            .from('restaurants')
+            .select('*')
+            .eq('email', email)
+            .single();
+
+        if (error || !restaurant) {
+            return res.status(400).json({ error: 'Credenziali non valide (email non trovata).' });
+        }
+
+        // 2. Verifica la password confrontandola con l'hash
+        const isPasswordValid = await bcrypt.compare(password, restaurant.password_hash);
+
+        if (!isPasswordValid) {
+            return res.status(400).json({ error: 'Credenziali non valide (password errata).' });
+        }
+
+        // 3. Login riuscito: restituisci i dati essenziali (senza la password)
+        delete restaurant.password_hash;
+
+        res.status(200).json({
+            message: 'Login effettuato con successo!',
+            restaurant: restaurant
+        });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Errore interno del server durante il login.' });
+    }
+});
