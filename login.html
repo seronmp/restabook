@@ -25,11 +25,11 @@
         <form id="loginForm">
             <div class="form-group">
                 <label>Email</label>
-                <input type="email" id="email" required placeholder="admin@ristorante.com">
+                <!-- Aggiunto autocomplete="username" per risolvere il warning -->
+                <input type="email" id="email" required placeholder="admin@ristorante.com" autocomplete="username">
             </div>
             <div class="form-group">
                 <label>Password</label>
-                <!-- Modificato autocomplete come suggerito dall'avviso del browser -->
                 <input type="password" id="login-password" required placeholder="********" autocomplete="current-password">
             </div>
             <button type="submit">Accedi</button>
@@ -38,10 +38,10 @@
     </div>
 
     <script>
-        // 1. INIZIALIZZA SUPABASE (Sostituisci con i tuoi veri dati)
-        const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+        // 1. INIZIALIZZA SUPABASE (Cambiata variabile in "supabaseClient" per evitare il blocco)
+        const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co/';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         // 2. GESTISCI IL LOGIN
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
@@ -50,13 +50,11 @@
             const messageDiv = document.getElementById('loginMessage');
             messageDiv.style.color = "#333";
             messageDiv.innerText = "Accesso in corso...";
-
-            // Prende i valori inseriti negli input[cite: 9]
             const emailInput = document.getElementById('email').value;
             const passwordInput = document.getElementById('login-password').value;
 
-            // Esegue l'accesso
-            const { data, error } = await supabase.auth.signInWithPassword({
+            // Esegue l'accesso usando la nuova variabile
+            const { data, error } = await supabaseClient.auth.signInWithPassword({
                 email: emailInput,
                 password: passwordInput
             });
