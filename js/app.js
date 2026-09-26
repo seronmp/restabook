@@ -68,5 +68,3 @@ if (btnToggleEdit) {
         }
     });
 }
-        });
-    }
