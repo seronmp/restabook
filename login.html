@@ -76,5 +76,30 @@
             }
         });
     </script>
+    <script>
+document.querySelector('form')?.addEventListener('submit', async (e) => {
+    e.preventDefault(); // Fondamentale: impedisce alla pagina di ricaricarsi a vuoto
+
+    // Prende i valori inseriti (sfruttando l'ID login-password che ho visto nella tua console)
+    const emailInput = document.querySelector('input[type="email"]' || 'input[id*="email"]').value;
+    const passwordInput = document.getElementById('login-password').value;
+
+    if (typeof supabase !== 'undefined') {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: emailInput,
+            password: passwordInput
+        });
+
+        if (error) {
+            alert("Errore di accesso: " + error.message);
+        } else if (data.user) {
+            // LOGIN RIUSCITO: Ti sposta istantaneamente nella dashboard admin!
+            window.location.href = 'index.html?p=/admin'; 
+        }
+    } else {
+        console.error("Supabase non è inizializzato su login.html");
+    }
+});
+</script>
 </body>
 </html>
