@@ -375,3 +375,20 @@ function checkClientPrivacy() {
         privacyLabel.innerText = t.privacyNewText;
     }
 }
+// Gestione dei click per le funzioni da Superadmin
+document.addEventListener('click', async (e) => {
+    // Reindirizza alla pagina di creazione ristorante
+    if (e.target && e.target.id === 'btn-create-restaurant') {
+        window.location.href = 'register.html';
+    }
+    
+    // Esegue il logout, pulisce la sessione e torna al login
+    if (e.target && e.target.id === 'btn-logout') {
+        if (typeof supabase !== 'undefined') {
+            await supabase.auth.signOut();
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    }
+});
