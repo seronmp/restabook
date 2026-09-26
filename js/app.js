@@ -124,7 +124,7 @@ setTimeout(async () => {
 }, 1000);
 // --- FINE SUPER-PATCH ADMIN ---
 
-// --- ATTIVAZIONE BOTTONE MODIFICA SALA ---
+// --- ATTIVAZIONE FORZATA EDITORE SALA & GESTIONE RISTORANTE ---
 setTimeout(() => {
     let isEditMode = false;
     const btnToggleEdit = document.getElementById('btn-toggle-edit');
@@ -134,20 +134,30 @@ setTimeout(() => {
     const btnAddTable = document.getElementById('btn-add-table');
 
     if (btnToggleEdit) {
-        btnToggleEdit.addEventListener('click', () => {
+        // Rimuoviamo eventuali vecchi listener doppi clonando il bottone
+        const newBtnEdit = btnToggleEdit.cloneNode(true);
+        btnToggleEdit.parentNode.replaceChild(newBtnEdit, btnToggleEdit);
+
+        newBtnEdit.addEventListener('click', () => {
+            const currentRestId = localStorage.getItem('current_restaurant_id');
+            if (!currentRestId) {
+                alert("Attenzione: seleziona prima un ristorante dal menu a tendina in alto per modificare la sua sala!");
+                return;
+            }
+
             isEditMode = !isEditMode;
             
             if (isEditMode) {
-                btnToggleEdit.classList.replace('bg-gray-100', 'bg-indigo-600');
-                btnToggleEdit.classList.replace('text-gray-700', 'text-white');
+                newBtnEdit.classList.replace('bg-gray-100', 'bg-indigo-600');
+                newBtnEdit.classList.replace('text-gray-700', 'text-white');
                 if(txtEditMode) txtEditMode.innerText = "Chiudi Modifica / Schließen";
                 
                 if (btnAddWall) btnAddWall.classList.remove('hidden');
                 if (btnAddRoom) btnAddRoom.classList.remove('hidden');
                 if (btnAddTable) btnAddTable.classList.remove('hidden');
             } else {
-                btnToggleEdit.classList.replace('bg-indigo-600', 'bg-gray-100');
-                btnToggleEdit.classList.replace('text-white', 'text-gray-700');
+                newBtnEdit.classList.replace('bg-indigo-600', 'bg-gray-100');
+                newBtnEdit.classList.replace('text-white', 'text-gray-700');
                 if(txtEditMode) txtEditMode.innerText = "Modifica Sala & Muri / Wände bearbeiten";
                 
                 if (btnAddWall) btnAddWall.classList.add('hidden');
@@ -156,5 +166,4 @@ setTimeout(() => {
             }
         });
     }
-}, 1500);
-// --- FINE ATTIVAZIONE BOTTONE MODIFICA SALA ---
+}, 1800);
