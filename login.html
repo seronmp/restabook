@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login Ristoratore</title>
+    <!-- Importa la libreria di Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
         .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 350px; }
@@ -13,7 +15,7 @@
         input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background-color: #007bff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
         button:hover { background-color: #0056b3; }
-        .message { margin-top: 15px; text-align: center; font-size: 14px; }
+        .message { margin-top: 15px; text-align: center; font-size: 14px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -27,36 +29,49 @@
             </div>
             <div class="form-group">
                 <label>Password</label>
+                <!-- Modificato autocomplete come suggerito dall'avviso del browser -->
                 <input type="password" id="login-password" required placeholder="********" autocomplete="current-password">
             </div>
             <button type="submit">Accedi</button>
         </form>
         <div id="loginMessage" class="message"></div>
     </div>
+
     <script>
-document.querySelector('form')?.addEventListener('submit', async (e) => {
-    e.preventDefault(); // Fondamentale: impedisce alla pagina di ricaricarsi a vuoto
+        // 1. INIZIALIZZA SUPABASE (Sostituisci con i tuoi veri dati)
+        const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // Prende i valori inseriti (sfruttando l'ID login-password che ho visto nella tua console)
-    const emailInput = document.querySelector('input[type="email"]' || 'input[id*="email"]').value;
-    const passwordInput = document.getElementById('login-password').value;
+        // 2. GESTISCI IL LOGIN
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            
+            const messageDiv = document.getElementById('loginMessage');
+            messageDiv.style.color = "#333";
+            messageDiv.innerText = "Accesso in corso...";
 
-    if (typeof supabase !== 'undefined') {
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: emailInput,
-            password: passwordInput
+            // Prende i valori inseriti negli input[cite: 9]
+            const emailInput = document.getElementById('email').value;
+            const passwordInput = document.getElementById('login-password').value;
+
+            // Esegue l'accesso
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email: emailInput,
+                password: passwordInput
+            });
+
+            if (error) {
+                messageDiv.style.color = "red";
+                messageDiv.innerText = "Errore: " + error.message;
+                console.error("Dettaglio errore:", error);
+            } else if (data.user) {
+                messageDiv.style.color = "green";
+                messageDiv.innerText = "Accesso riuscito! Reindirizzamento...";
+                // LOGIN RIUSCITO: Ti sposta nella dashboard admin
+                window.location.href = 'index.html?p=/admin'; 
+            }
         });
-
-        if (error) {
-            alert("Errore di accesso: " + error.message);
-        } else if (data.user) {
-            // LOGIN RIUSCITO: Ti sposta istantaneamente nella dashboard admin!
-            window.location.href = 'index.html?p=/admin'; 
-        }
-    } else {
-        console.error("Supabase non è inizializzato su login.html");
-    }
-});
-</script>
+    </script>
 </body>
 </html>
