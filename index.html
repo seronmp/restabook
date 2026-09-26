@@ -10,1086 +10,14 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Supabase JS Client -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
-    <script>
-        // --- CONFIGURAZIONE SUPABASE & VARIABILI GLOBALI ---
-        const SUPABASE_URL = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-
-        let supabaseClient = null;
-        let currentRestaurantId = null;
-        let currentRestaurantName = '';
-        let currentLang = 'it';
-        let currentDate = new Date();
-        let tables = [];
-        let bookings = [];
-        let rooms = [
-            { 
-                id: 'sala-principale', 
-                name: 'Sala Principale / Hauptsaal',
-                walls: [
-                    { x1: 20, y1: 20, x2: 700, y2: 20, type: 'wall' },
-                    { x1: 700, y1: 20, x2: 700, y2: 500, type: 'wall' },
-                    { x1: 700, y1: 500, x2: 350, y2: 500, type: 'wall' },
-                    { x1: 350, y1: 500, x2: 350, y2: 350, type: 'door' },
-                    { x1: 350, y1: 350, x2: 20, y2: 350, type: 'wall' },
-                    { x1: 20, y1: 350, x2: 20, y2: 20, type: 'wall' }
-                ]
-            },
-            { 
-                id: 'veranda', 
-                name: 'Veranda / Terrasse',
-                walls: [
-                    { x1: 20, y1: 20, x2: 500, y2: 20, type: 'wall' },
-                    { x1: 500, y1: 20, x2: 500, y2: 400, type: 'wall' },
-                    { x1: 500, y1: 400, x2: 20, y2: 400, type: 'wall' },
-                    { x1: 20, y1: 400, x2: 20, y2: 20, type: 'wall' }
-                ]
-            }
-        ];
-        let currentRoomId = 'sala-principale';
-        let isEditMode = false;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (window.supabase) {
-                supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                
-                const { data: { session } } = await supabaseClient.auth.getSession();
-                if (session) {
-                    await gestisciAccessoRiuscito(session.user);
-                }
-            }
-        });
-
-        const translations = {
-            it: {
-                title: "SmartTable Manager",
-                calendar: "Calendario",
-                floorTitle: "Pianta Interattiva & Muri Dinamici",
-                floorSubtitle: "Clicca sui tavoli per prenotare. In modifica puoi ridimensionarli, ruotarli, regolarne i posti e modellare i muri.",
-                timeFilter: "Fascia:",
-                legendTitle: "Legenda Tavoli:",
-                free: "Libero",
-                partial: "Parziale",
-                full: "Completo",
-                modalTitle: "Prenotazioni Tavolo",
-                existingTitle: "Orari già riservati:",
-                formTitle: "Nuova prenotazione",
-                lblStart: "Dalle",
-                lblEnd: "Fino alle",
-                lblName: "Nome Cliente",
-                lblGuests: "Persone",
-                lblPhone: "Telefono",
-                privacyText: "Il cliente ha già accettato l'Informativa sulla Privacy in precedenza.",
-                privacyNewText: "Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *",
-                btnSave: "Salva Prenotazione",
-                seats: "Posti",
-                noBookings: "Nessuna prenotazione oggi.",
-                editModeOn: "Salva & Chiudi Modifica",
-                editModeOff: "Modifica Sala & Muri / Wände bearbeiten",
-                newTable: "Nuovo Tavolo",
-                newRoom: "+ Nuova Sala",
-                addWall: "+ Aggiungi Muro",
-                roomModalTitle: "Aggiungi Nuova Sala",
-                lblRoomName: "Nome Sala",
-                btnSaveRoom: "Crea Sala",
-                rotateTable: "Ruota 90° 🔄",
-                errCapacity: "Il numero di ospiti supera la capienza di questo tavolo (max posti: ",
-                errOverlap: "Attenzione: questo tavolo è già occupato nell'orario selezionato!",
-                dailySummaryTitle: "Riepilogo Prenotazioni del Giorno",
-                dailySummarySub: "Elenco completo e totale ospiti attesi per la data selezionata.",
-                totalGuestsLabel: "Totale Ospiti Attesi",
-                thTime: "Orario",
-                thTable: "Tavolo",
-                thName: "Cliente",
-                thGuests: "Persone",
-                thPhone: "Telefono",
-                thActions: "Azioni",
-                noDailyBookings: "Nessuna prenotazione registrata per questa data.",
-                timeFilterAll: "Tutta la giornata",
-                timeFilterLunch: "Pranzo (12-15)",
-                timeFilterDinner1: "Cena 1 (18-21)",
-                timeFilterDinner2: "Cena 2 (21-23:30)"
-            },
-            de: {
-                title: "SmartTable Manager",
-                calendar: "Kalender",
-                floorTitle: "Interaktiver Raum- & Wandplan",
-                floorSubtitle: "Klicken zum Reservieren. Im Modus Grösse anpassen, drehen, Plätze ändern und Wände bearbeiten.",
-                timeFilter: "Zeitfenster:",
-                legendTitle: "Tisch-Legende:",
-                free: "Frei",
-                partial: "Teilweise",
-                full: "Voll",
-                modalTitle: "Tisch-Reservierungen",
-                existingTitle: "Bereits reservierte Zeiten:",
-                formTitle: "Neue Reservierung",
-                lblStart: "Von",
-                lblEnd: "Bis",
-                lblName: "Kundenname",
-                lblGuests: "Personen",
-                lblPhone: "Telefon",
-                privacyText: "Der Kunde hat die Datenschutzbestimmungen bereits akzeptiert.",
-                privacyNewText: "Ich habe die Datenschutzbestimmungen gelesen und akzeptiere sie. *",
-                btnSave: "Reservierung speichern",
-                seats: "Plätze",
-                noBookings: "Keine Reservierungen.",
-                editModeOn: "Speichern & Fertig",
-                editModeOff: "Raum & Wände bearbeiten",
-                newTable: "Neuer Tisch",
-                newRoom: "+ Neuer Saal",
-                addWall: "+ Wand hinzufügen",
-                roomModalTitle: "Neuen Saal hinzufügen",
-                lblRoomName: "Saalname",
-                btnSaveRoom: "Saal erstellen",
-                rotateTable: "90° drehen 🔄",
-                errCapacity: "Die Anzahl der Gäste überschreitet die Kapazität (max. Plätze: ",
-                errOverlap: "Achtung: Dieser Tisch ist zur gewählten Zeit bereits belegt!",
-                dailySummaryTitle: "Tages-Reservierungsübersicht",
-                dailySummarySub: "Vollständige Liste und erwartete Gäste für das gewählte Datum.",
-                totalGuestsLabel: "Erwartete Gäste",
-                thTime: "Uhrzeit",
-                thTable: "Tisch",
-                thName: "Kunde",
-                thGuests: "Personen",
-                thPhone: "Telefon",
-                thActions: "Aktion",
-                noDailyBookings: "Keine Reservierungen für dieses Datum.",
-                timeFilterAll: "Ganztägig",
-                timeFilterLunch: "Mittagessen (12-15)",
-                timeFilterDinner1: "Abendessen 1 (18-21)",
-                timeFilterDinner2: "Abendessen 2 (21-23:30)"
-            }
-        };
-
-        async function eseguiLogin(event) {
-            if (event) event.preventDefault();
-            const email = document.getElementById('login-email').value;
-            const password = document.getElementById('login-password').value;
-
-            if (!supabaseClient) {
-                alert("Supabase non è ancora pronto.");
-                return;
-            }
-
-            const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-
-            if (authError) {
-                alert("Errore di login: " + authError.message);
-                return;
-            }
-
-            await gestisciAccessoRiuscito(authData.user);
-        }
-
-        async function gestisciAccessoRiuscito(user) {
-            document.getElementById('login-container').style.display = 'none';
-            document.getElementById('app-container').style.display = 'block';
-
-            if (user.email === 'admin@admin.com') {
-                currentRestaurantId = 'tutti';
-                currentRestaurantName = 'Admin Globale';
-            } else {
-                const { data: profile } = await supabaseClient
-                    .from('profiles')
-                    .select('restaurant_id, restaurant_name')
-                    .eq('id', user.id)
-                    .single();
-
-                if (profile) {
-                    currentRestaurantId = profile.restaurant_id;
-                    currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
-                } else {
-                    currentRestaurantId = 'SportwellMals';
-                    currentRestaurantName = 'SportWell Mals';
-                }
-            }
-
-            document.getElementById('app-title').innerText = currentRestaurantName;
-            initApp();
-        }
-
-        async function initApp() {
-            setLanguage('it');
-            await loadDataFromSupabase();
-        }
-
-        async function loadDataFromSupabase() {
-            if (!currentRestaurantId || !supabaseClient) return;
-
-            try {
-                let queryTables = supabaseClient.from('tables').select('*');
-                let queryBookings = supabaseClient.from('bookings').select('*');
-
-                if (currentRestaurantId !== 'tutti') {
-                    queryTables = queryTables.eq('restaurant_id', currentRestaurantId);
-                    queryBookings = queryBookings.eq('restaurant_id', currentRestaurantId);
-                }
-
-                const { data: tablesData } = await queryTables;
-                tables = (tablesData || []).map(t => ({
-                    id: t.id,
-                    table_number: t.table_number,
-                    seats: t.seats,
-                    shape: t.shape,
-                    pos_x: t.pos_x ?? 50,
-                    pos_y: t.pos_y ?? 50,
-                    width: t.width ?? (t.seats <= 2 ? 70 : t.seats <= 4 ? 90 : t.seats <= 8 ? 120 : 150),
-                    height: t.height ?? (t.seats <= 8 ? 90 : 100),
-                    rotation: t.rotation ?? 0,
-                    room_id: t.room_id || 'sala-principale',
-                    restaurant_id: t.restaurant_id
-                }));
-
-                const { data: bookingsData } = await queryBookings;
-                bookings = (bookingsData || []).map(b => ({
-                    id: b.id,
-                    tableId: b.table_id,
-                    date: b.date,
-                    startTime: b.start_time.substring(0, 5),
-                    endTime: b.end_time.substring(0, 5),
-                    name: b.name,
-                    guests: b.guests,
-                    phone: b.phone
-                }));
-
-                renderRooms();
-                renderCalendar();
-                renderTables();
-                renderDailySummary();
-            } catch (err) {
-                console.error("Errore caricamento Supabase:", err.message);
-            }
-        }
-
-        function setLanguage(lang) {
-            currentLang = lang;
-            document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-            
-            const t = translations[lang];
-            document.getElementById('opt-all').innerText = t.timeFilterAll;
-            document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
-            document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
-            document.getElementById('opt-dinner2').innerText = t.timeFilterDinner2;
-                        
-            if (!currentRestaurantName) {
-                document.getElementById('app-title').innerText = t.title;
-            }
-            document.getElementById('calendar-title').innerText = t.calendar;
-            document.getElementById('floor-title').innerText = t.floorTitle;
-            document.getElementById('floor-subtitle').innerText = t.floorSubtitle;
-            document.getElementById('lbl-time-filter').innerText = t.timeFilter;
-            document.getElementById('legend-title').innerText = t.legendTitle;
-            document.getElementById('leg-free').innerText = t.free;
-            document.getElementById('leg-partial').innerText = t.partial;
-            document.getElementById('leg-full').innerText = t.full;
-            document.getElementById('modal-existing-title').innerText = t.existingTitle;
-            document.getElementById('modal-form-title').innerText = t.formTitle;
-            document.getElementById('lbl-start').innerText = t.lblStart;
-            document.getElementById('lbl-end').innerText = t.lblEnd;
-            document.getElementById('lbl-name').innerText = t.lblName;
-            document.getElementById('lbl-guests').innerText = t.lblGuests;
-            document.getElementById('lbl-phone').innerText = t.lblPhone;
-            document.getElementById('btn-save').innerText = t.btnSave;
-            document.getElementById('txt-add-table').innerText = t.newTable;
-            document.getElementById('txt-add-room').innerText = t.newRoom;
-            document.getElementById('txt-add-wall').innerText = t.addWall;
-            document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
-            document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
-            document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
-            document.getElementById('th-time').innerText = t.thTime;
-            document.getElementById('th-table').innerText = t.thTable;
-            document.getElementById('th-name').innerText = t.thName;
-            document.getElementById('th-guests').innerText = t.thGuests;
-            document.getElementById('th-phone').innerText = t.thPhone;
-            document.getElementById('th-actions').innerText = t.thActions;
-
-            document.getElementById('txt-edit-mode').innerText = isEditMode ? t.editModeOn : t.editModeOff;
-
-            checkClientPrivacy();
-
-            renderRooms();
-            renderCalendar();
-            renderTables();
-        }
-
-        function checkClientPrivacy() {
-            const phoneInput = document.getElementById('form-phone').value.trim();
-            const privacyContainer = document.getElementById('privacy-container');
-            const privacyConsent = document.getElementById('privacy-consent');
-            const privacyLabel = document.getElementById('privacy-label-text');
-            const t = translations[currentLang];
-
-            if (!phoneInput) {
-                privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-                privacyConsent.required = true;
-                privacyConsent.checked = false;
-                privacyConsent.disabled = false;
-                privacyLabel.innerText = t.privacyNewText;
-                return;
-            }
-
-            const existingClient = bookings.some(b => b.phone && b.phone.trim() === phoneInput);
-
-            if (existingClient) {
-                privacyConsent.checked = true;
-                privacyConsent.required = false;
-                privacyConsent.disabled = true;
-                privacyLabel.innerText = t.privacyText;
-                privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-            } else {
-                privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-                privacyConsent.required = true;
-                privacyConsent.checked = false;
-                privacyConsent.disabled = false;
-                privacyLabel.innerText = t.privacyNewText;
-            }
-        }
-
-        function renderRooms() {
-            const container = document.getElementById('rooms-tabs-container');
-            if (!container) return;
-            container.innerHTML = '';
-
-            rooms.forEach(room => {
-                const isActive = room.id === currentRoomId;
-                const btn = document.createElement('button');
-                btn.className = `px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${isActive ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`;
-                btn.innerText = room.name;
-                btn.onclick = () => {
-                    currentRoomId = room.id;
-                    renderRooms();
-                    renderTables();
-                };
-                container.appendChild(btn);
-            });
-        }
-
-        function openAddRoomModal() {
-            document.getElementById('room-config-modal').classList.remove('hidden');
-        }
-
-        function closeRoomConfigModal() {
-            document.getElementById('room-config-modal').classList.add('hidden');
-        }
-
-        function saveNewRoom(e) {
-            e.preventDefault();
-            const roomName = document.getElementById('new-room-name').value.trim();
-            if (!roomName) return;
-
-            const newId = 'sala-' + Date.now();
-            rooms.push({ 
-                id: newId, 
-                name: roomName,
-                walls: [
-                    { x1: 20, y1: 20, x2: 600, y2: 20, type: 'wall' },
-                    { x1: 600, y1: 20, x2: 600, y2: 400, type: 'wall' },
-                    { x1: 600, y1: 400, x2: 20, y2: 400, type: 'wall' },
-                    { x1: 20, y1: 400, x2: 20, y2: 20, type: 'wall' }
-                ]
-            });
-            currentRoomId = newId;
-
-            closeRoomConfigModal();
-            document.getElementById('new-room-name').value = '';
-            renderRooms();
-            renderTables();
-        }
-
-        function addCustomWall() {
-            const room = rooms.find(r => r.id === currentRoomId);
-            if (!room) return;
-            room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
-            renderTables();
-        }
-
-        function splitWall(roomObj, index) {
-            const w = roomObj.walls[index];
-            const midX = Math.round((w.x1 + w.x2) / 2);
-            const midY = Math.round((w.y1 + w.y2) / 2);
-
-            const newWallSegment = {
-                x1: midX,
-                y1: midY,
-                x2: w.x2,
-                y2: w.y2,
-                type: w.type
-            };
-
-            w.x2 = midX;
-            w.y2 = midY;
-
-            roomObj.walls.splice(index + 1, 0, newWallSegment);
-            renderTables();
-        }
-
-        function removeWall(roomObj, index) {
-            if (roomObj.walls.length <= 3) {
-                alert("Una stanza deve avere almeno 3 segmenti di muro.");
-                return;
-            }
-            roomObj.walls.splice(index, 1);
-            renderTables();
-        }
-
-        function formatDateKey(date) {
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const day = String(date.getDate()).padStart(2, '0');
-            return `${year}-${month}-${day}`;
-        }
-
-        function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            const monthsIt = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"];
-            const monthsDe = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
-            
-            document.getElementById('month-year-label').innerText = `${currentLang === 'it' ? monthsIt[month] : monthsDe[month]} ${year}`;
-            document.getElementById('current-date-display').innerText = currentDate.toLocaleDateString(currentLang === 'it' ? 'it-IT' : 'de-DE', { weekday: 'short', day: 'numeric', month: 'short' });
-
-            const firstDayIndex = (new Date(year, month, 1).getDay() + 6) % 7;
-            const totalDays = new Date(year, month + 1, 0).getDate();
-
-            const daysContainer = document.getElementById('calendar-days');
-            daysContainer.innerHTML = '';
-            renderDailySummary();
-
-            for (let i = 0; i < firstDayIndex; i++) {
-                daysContainer.innerHTML += `<div></div>`;
-            }
-
-            const selectedStr = formatDateKey(currentDate);
-            for (let d = 1; d <= totalDays; d++) {
-                const dateTest = new Date(year, month, d);
-                const dateStr = formatDateKey(dateTest);
-                const isSelected = dateStr === selectedStr;
-                const hasBookings = bookings.some(b => b.date === dateStr);
-
-                let btnClass = "h-8 w-8 mx-auto rounded-full flex items-center justify-center text-xs font-medium transition cursor-pointer relative ";
-                if (isSelected) {
-                    btnClass += "bg-indigo-600 text-white shadow-md";
-                } else {
-                    btnClass += "hover:bg-gray-100 text-gray-700";
-                }
-
-                daysContainer.innerHTML += `
-                    <div onclick="selectDate(${year}, ${month}, ${d})">
-                        <button class="${btnClass}">
-                            ${d}
-                            ${hasBookings && !isSelected ? '<span class="absolute bottom-1 w-1 h-1 bg-indigo-500 rounded-full"></span>' : ''}
-                        </button>
-                    </div>
-                `;
-            }
-        }
-
-        function selectDate(year, month, day) {
-            currentDate = new Date(year, month, day);
-            renderCalendar();
-            renderTables();
-        }
-
-        function changeMonth(direction) {
-            currentDate.setMonth(currentDate.getMonth() + direction);
-            renderCalendar();
-        }
-
-        function renderDailySummary() {
-            const currentDateStr = formatDateKey(currentDate);
-            const tbody = document.getElementById('daily-summary-list');
-            const totalCountEl = document.getElementById('total-guests-count');
-            const t = translations[currentLang];
-
-            const dayBookings = bookings
-                .filter(b => b.date === currentDateStr)
-                .sort((a, b) => a.startTime.localeCompare(b.startTime));
-
-            tbody.innerHTML = '';
-            let totalGuests = 0;
-
-            if (dayBookings.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-gray-400 italic">${t.noDailyBookings}</td></tr>`;
-                totalCountEl.innerText = '0';
-                return;
-            }
-
-            dayBookings.forEach(b => {
-                totalGuests += b.guests;
-                const tableObj = tables.find(t => t.id === b.tableId);
-                const tableNum = tableObj ? tableObj.table_number : '-';
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-gray-50/85 transition">
-                        <td class="py-3 px-3 font-bold text-indigo-600">${b.startTime} - ${b.endTime}</td>
-                        <td class="py-3 px-3 font-semibold">T-${tableNum}</td>
-                        <td class="py-3 px-3 font-medium text-gray-900">${b.name}</td>
-                        <td class="py-3 px-3"><span class="bg-gray-100 px-2 py-0.5 rounded-md font-bold">${b.guests}</span></td>
-                        <td class="py-3 px-3 text-gray-500">${b.phone || '-'}</td>
-                        <td class="py-3 px-3 text-right">
-                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1.5 rounded-lg hover:bg-rose-50 transition" title="Elimina">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            });
-
-            totalCountEl.innerText = totalGuests;
-        }
-
-        function renderTables() {
-            const canvas = document.getElementById('floor-canvas');
-            canvas.innerHTML = '';
-            const currentDateStr = formatDateKey(currentDate);
-            const timeFilter = document.getElementById('filter-time').value;
-            const roomObj = rooms.find(r => r.id === currentRoomId) || rooms[0];
-
-            if (roomObj && roomObj.walls) {
-                roomObj.walls.forEach((wall, wallIndex) => {
-                    const dx = wall.x2 - wall.x1;
-                    const dy = wall.y2 - wall.y1;
-                    const length = Math.sqrt(dx * dx + dy * dy);
-                    const angle = Math.atan2(dy, dx) * (180 / Math.PI);
-
-                    const wallDiv = document.createElement('div');
-                    const isDoor = wall.type === 'door';
-                    wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-2' : 'bg-slate-700 h-1.5'} rounded transition-all`;
-                    wallDiv.style.left = `${wall.x1}px`;
-                    wallDiv.style.top = `${wall.y1}px`;
-                    wallDiv.style.width = `${length}px`;
-                    wallDiv.style.transformOrigin = '0 0';
-                    wallDiv.style.transform = `rotate(${angle}deg)`;
-
-                    if (isDoor) {
-                        const doorLabel = currentLang === 'de' ? 'Tür / Durchgang' : 'Porta / Varco';
-                        wallDiv.innerHTML = `<span class="absolute -top-3 left-1/2 -translate-x-1/2 text-[8px] font-bold text-amber-800 bg-amber-100 px-1 rounded pointer-events-none">${doorLabel}</span>`;
-                    }
-
-                    if (isEditMode) {
-                        wallDiv.classList.add('cursor-pointer', 'ring-2', 'ring-indigo-400');
-                        wallDiv.title = "Clicca per alternare Muro / Porta.";
-
-                        const midControl = document.createElement('div');
-                        midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90';
-                        
-                        const splitLabel = currentLang === 'de' ? 'Teilen' : 'Dividi';
-                        const deleteLabel = currentLang === 'de' ? 'Löschen' : 'Elimina';
-
-                        midControl.innerHTML = `
-                            <button onclick="event.stopPropagation(); splitWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="${splitLabel}">${splitLabel}</button>
-                            <button onclick="event.stopPropagation(); removeWall(rooms.find(r=>r.id==='${currentRoomId}'), ${wallIndex})" class="bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700" title="${deleteLabel}"><i class="fa-solid fa-xmark"></i></button>
-                        `;
-                        wallDiv.appendChild(midControl);
-
-                        wallDiv.onclick = (e) => {
-                            if(e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                            wall.type = wall.type === 'wall' ? 'door' : 'wall';
-                            renderTables();
-                        };
-
-                        const h1 = document.createElement('div');
-                        h1.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
-                        h1.style.left = `${wall.x1}px`;
-                        h1.style.top = `${wall.y1}px`;
-                        h1.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
-                        enableWallDrag(h1, wall, 'start');
-                        canvas.appendChild(h1);
-
-                        const h2 = document.createElement('div');
-                        h2.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
-                        h2.style.left = `${wall.x2}px`;
-                        h2.style.top = `${wall.y2}px`;
-                        h2.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
-                        enableWallDrag(h2, wall, 'end');
-                        canvas.appendChild(h2);
-                    }
-
-                    canvas.appendChild(wallDiv);
-                });
-            }
-
-            const roomTables = tables.filter(t => (t.room_id || 'sala-principale') === currentRoomId);
-            roomTables.forEach(table => {
-                let tableBookings = bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
-
-                if (timeFilter !== 'all') {
-                    const [fStart, fEnd] = timeFilter.split('-');
-                    tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
-                }
-
-                let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
-                let badgeColor = "bg-emerald-500";
-                let statusText = translations[currentLang].free;
-
-                if (tableBookings.length > 0 && timeFilter === 'all') {
-                    statusColor = "bg-amber-50 border-amber-300 text-amber-900";
-                    badgeColor = "bg-amber-500";
-                    statusText = `${tableBookings.length} ris.`;
-                } else if (tableBookings.length > 0) {
-                    statusColor = "bg-rose-50 border-rose-300 text-rose-900";
-                    badgeColor = "bg-rose-500";
-                    statusText = translations[currentLang].full;
-                }
-
-                let width = table.width ?? 90;
-                let height = table.height ?? 90;
-                const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
-
-                const tableEl = document.createElement('div');
-                tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md z-20`;
-                tableEl.style.left = `${table.pos_x ?? 50}px`;
-                tableEl.style.top = `${table.pos_y ?? 50}px`;
-                tableEl.style.width = `${width}px`;
-                tableEl.style.height = `${height}px`;
-                tableEl.style.transform = `rotate(${table.rotation ?? 0}deg)`;
-
-                let editControlsHtml = '';
-                if (isEditMode) {
-                    editControlsHtml = `
-                        <button onclick="event.stopPropagation(); deleteTable('${table.id}')" class="absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
-                        <button onclick="event.stopPropagation(); rotateTable('${table.id}')" class="absolute -top-2 left-1 bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-amber-600 z-30" title="Ruota 90°">
-                            <i class="fa-solid fa-rotate"></i> 90°
-                        </button>
-                        <div class="absolute -bottom-2 -right-2 w-4 h-4 bg-indigo-600 rounded-full cursor-se-resize z-40 shadow flex items-center justify-center text-white text-[8px]" title="Trascina per ridimensionare" id="resize-handle-${table.id}">
-                            <i class="fa-solid fa-expand text-[7px]"></i>
-                        </div>
-                    `;
-                }
-
-                let seatsControlHtml = isEditMode ? `
-                    <div class="flex items-center justify-center space-x-1 my-auto bg-white/80 rounded px-1 py-0.5 z-30 shadow-xs" onclick="event.stopPropagation();">
-                        <span class="text-[9px] font-bold text-gray-700">Posti:</span>
-                        <input type="number" min="1" max="30" value="${table.seats}" onchange="updateTableSeats('${table.id}', this.value)" class="w-8 text-center text-xs font-black bg-white border border-gray-300 rounded">
-                    </div>
-                ` : `
-                    <div class="text-center pointer-events-none my-auto">
-                        <h3 class="text-sm font-black">${table.table_number}</h3>
-                        <div class="text-[9px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
-                    </div>
-                `;
-
-                tableEl.innerHTML = `
-                    ${editControlsHtml}
-                    <div class="flex justify-between items-start pointer-events-none">
-                        <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
-                        <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
-                    </div>
-                    ${seatsControlHtml}
-                    <div class="text-[9px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
-                `;
-
-                tableEl.addEventListener('click', () => {
-                    if (!isEditMode) openTableModal(table.id);
-                });
-
-                if (isEditMode) {
-                    tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
-                    enableTableDrag(tableEl, table.id, width, height);
-                    
-                    setTimeout(() => {
-                        const resizeHandle = document.getElementById(`resize-handle-${table.id}`);
-                        if (resizeHandle) {
-                            enableTableResize(resizeHandle, tableEl, table.id);
-                        }
-                    }, 0);
-                }
-
-                canvas.appendChild(tableEl);
-            });
-        }
-
-        function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
-            let snappedX = x;
-            let snappedY = y;
-
-            const gridSize = 20;
-            const gridX = Math.round(x / gridSize) * gridSize;
-            const gridY = Math.round(y / gridSize) * gridSize;
-
-            if (Math.abs(x - gridX) < snapThreshold) snappedX = gridX;
-            if (Math.abs(y - gridY) < snapThreshold) snappedY = gridY;
-
-            if (roomObj && roomObj.walls) {
-                roomObj.walls.forEach(wall => {
-                    const endpoints = [
-                        { x: wall.x1, y: wall.y1 },
-                        { x: wall.x2, y: wall.y2 }
-                    ];
-
-                    endpoints.forEach(pt => {
-                        if (Math.abs(pt.x - x) < snapThreshold) {
-                            snappedX = pt.x;
-                        }
-                        if (Math.abs(pt.y - y) < snapThreshold) {
-                            snappedY = pt.y;
-                        }
-                    });
-                });
-            }
-
-            return { x: snappedX, y: snappedY };
-        }
-
-        function enableWallDrag(handleEl, wallObj, pointType) {
-            let isDragging = false;
-            handleEl.style.touchAction = 'none';
-
-            handleEl.addEventListener('pointerdown', (e) => {
-                if (!isEditMode) return;
-                isDragging = true;
-                handleEl.setPointerCapture(e.pointerId);
-                e.stopPropagation();
-            });
-
-            const onPointerMove = (e) => {
-                if (!isDragging || !isEditMode) return;
-                const canvas = document.getElementById('floor-canvas');
-                const rect = canvas.getBoundingClientRect();
-                
-                let rawX = e.clientX - rect.left;
-                let rawY = e.clientY - rect.top;
-
-                rawX = Math.max(0, Math.min(rawX, canvas.clientWidth));
-                rawY = Math.max(0, Math.min(rawY, canvas.clientHeight));
-
-                const roomObj = rooms.find(r => r.id === currentRoomId);
-                const snapped = applyMagneticSnap(rawX, rawY, roomObj);
-
-                if (pointType === 'start') {
-                    wallObj.x1 = snapped.x;
-                    wallObj.y1 = snapped.y;
-                } else {
-                    wallObj.x2 = snapped.x;
-                    wallObj.y2 = snapped.y;
-                }
-                renderTables();
-            };
-
-            const onPointerUp = () => {
-                if (isDragging) isDragging = false;
-            };
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-        }
-
-        function enableTableDrag(element, tableId, width, height) {
-            let isDragging = false;
-            let startX, startY;
-            element.style.touchAction = 'none';
-
-            element.addEventListener('pointerdown', (e) => {
-                if (!isEditMode || e.target.closest('button') || e.target.tagName === 'INPUT' || e.target.classList.contains('fa-expand')) return;
-                isDragging = true;
-                element.setPointerCapture(e.pointerId);
-                startX = e.clientX - element.getBoundingClientRect().left;
-                startY = e.clientY - element.getBoundingClientRect().top;
-                element.style.zIndex = 1000;
-                e.stopPropagation();
-            });
-
-            const onPointerMove = (e) => {
-                if (!isDragging || !isEditMode) return;
-                const canvas = document.getElementById('floor-canvas');
-                const rect = canvas.getBoundingClientRect();
-                
-                let newX = e.clientX - rect.left - startX;
-                let newY = e.clientY - rect.top - startY;
-
-                const maxX = canvas.clientWidth - width - 10;
-                const maxY = canvas.clientHeight - height - 10;
-
-                newX = Math.max(5, Math.min(newX, maxX));
-                newY = Math.max(5, Math.min(newY, maxY));
-
-                element.style.left = `${newX}px`;
-                element.style.top = `${newY}px`;
-            };
-
-            const onPointerUp = () => {
-                if (isDragging) {
-                    isDragging = false;
-                    element.style.zIndex = 20;
-                    const newX = parseInt(element.style.left) || 0;
-                    const newY = parseInt(element.style.top) || 0;
-
-                    const tableObj = tables.find(t => t.id === tableId);
-                    if (tableObj) {
-                        tableObj.pos_x = newX;
-                        tableObj.pos_y = newY;
-                        updateTableCoordinates(tableId, newX, newY);
-                    }
-                }
-            };
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-        }
-
-        function enableTableResize(handleEl, tableEl, tableId) {
-            let isResizing = false;
-            let startX, startY, startWidth, startHeight;
-            handleEl.style.touchAction = 'none';
-
-            handleEl.addEventListener('pointerdown', (e) => {
-                isResizing = true;
-                handleEl.setPointerCapture(e.pointerId);
-                startX = e.clientX;
-                startY = e.clientY;
-                startWidth = tableEl.offsetWidth;
-                startHeight = tableEl.offsetHeight;
-                e.stopPropagation();
-            });
-
-            const onPointerMove = (e) => {
-                if (!isResizing) return;
-                let newWidth = Math.max(50, startWidth + (e.clientX - startX));
-                let newHeight = Math.max(50, startHeight + (e.clientY - startY));
-
-                tableEl.style.width = `${newWidth}px`;
-                tableEl.style.height = `${newHeight}px`;
-            };
-
-            const onPointerUp = async () => {
-                if (isResizing) {
-                    isResizing = false;
-                    const finalWidth = tableEl.offsetWidth;
-                    const finalHeight = tableEl.offsetHeight;
-
-                    const tableObj = tables.find(t => t.id === tableId);
-                    if (tableObj) {
-                        tableObj.width = finalWidth;
-                        tableObj.height = finalHeight;
-                        if (supabaseClient) {
-                            await supabaseClient.from('tables').update({ width: finalWidth, height: finalHeight }).eq('id', tableId);
-                        }
-                    }
-                }
-            };
-
-            document.addEventListener('pointermove', onPointerMove);
-            document.addEventListener('pointerup', onPointerUp);
-        }
-
-        async function updateTableCoordinates(tableId, posX, posY) {
-            if (!supabaseClient) return;
-            await supabaseClient.from('tables').update({ pos_x: posX, pos_y: posY }).eq('id', tableId);
-        }
-
-        async function updateTableSeats(tableId, newSeats) {
-            const seatsNum = parseInt(newSeats) || 1;
-            const tableObj = tables.find(t => t.id === tableId);
-            if (tableObj) {
-                tableObj.seats = seatsNum;
-                if (supabaseClient) {
-                    await supabaseClient.from('tables').update({ seats: seatsNum }).eq('id', tableId);
-                }
-            }
-        }
-
-        async function rotateTable(tableId) {
-            const tableObj = tables.find(t => t.id === tableId);
-            if (!tableObj) return;
-
-            tableObj.rotation = ((tableObj.rotation || 0) + 90) % 360;
-            renderTables();
-
-            if (supabaseClient) {
-                await supabaseClient.from('tables').update({ rotation: tableObj.rotation }).eq('id', tableId);
-            }
-        }
-
-        function toggleEditMode() {
-            isEditMode = !isEditMode;
-            const btnEdit = document.getElementById('btn-toggle-edit');
-            const btnAddTable = document.getElementById('btn-add-table');
-            const btnAddRoom = document.getElementById('btn-add-room');
-            const btnAddWall = document.getElementById('btn-add-wall');
-            const t = translations[currentLang];
-
-            if (isEditMode) {
-                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-indigo-600 text-white shadow-sm transition flex items-center space-x-1.5";
-                document.getElementById('txt-edit-mode').innerText = t.editModeOn;
-                btnAddTable.classList.remove('hidden');
-                btnAddRoom.classList.remove('hidden');
-                btnAddWall.classList.remove('hidden');
-            } else {
-                btnEdit.className = "px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5";
-                document.getElementById('txt-edit-mode').innerText = t.editModeOff;
-                btnAddTable.classList.add('hidden');
-                btnAddRoom.classList.add('hidden');
-                btnAddWall.classList.add('hidden');
-            }
-            renderTables();
-        }
-
-        function openAddTableModal() {
-            document.getElementById('table-config-modal').classList.remove('hidden');
-        }
-
-        function closeTableConfigModal() {
-            document.getElementById('table-config-modal').classList.add('hidden');
-        }
-
-        async function saveNewTable(e) {
-            e.preventDefault();
-            if (!supabaseClient) return;
-            const tableNumber = document.getElementById('new-table-number').value;
-            const seats = parseInt(document.getElementById('new-table-seats').value);
-            const shape = document.getElementById('new-table-shape').value;
-
-            const { error } = await supabaseClient
-                .from('tables')
-                .insert([{
-                    table_number: tableNumber,
-                    seats: seats,
-                    shape: shape,
-                    pos_x: 50,
-                    pos_y: 50,
-                    width: seats <= 2 ? 70 : seats <= 4 ? 90 : 120,
-                    height: 90,
-                    rotation: 0,
-                    room_id: currentRoomId,
-                    restaurant_id: currentRestaurantId
-                }]);
-
-            if (error) {
-                alert("Errore nella creazione del tavolo: " + error.message);
-                return;
-            }
-
-            closeTableConfigModal();
-            document.getElementById('new-table-number').value = '';
-            await loadDataFromSupabase();
-        }
-
-        function openTableModal(tableId) {
-            const table = tables.find(t => t.id === tableId);
-            const currentDateStr = formatDateKey(currentDate);
-            
-            document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
-            document.getElementById('modal-table-info').innerText = `${translations[currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
-            document.getElementById('form-table-id').value = tableId;
-
-            document.getElementById('booking-form').reset();
-            checkClientPrivacy();
-
-            const rotateBtnContainer = document.getElementById('modal-rotate-container');
-            rotateBtnContainer.innerHTML = `
-                <button type="button" onclick="deleteTable('${tableId}')" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
-                    <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
-                </button>
-            `;
-
-            const listContainer = document.getElementById('modal-bookings-list');
-            const tableBookings = bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
-            
-            listContainer.innerHTML = '';
-            if (tableBookings.length === 0) {
-                listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[currentLang].noBookings}</p>`;
-            } else {
-                tableBookings.forEach(b => {
-                    listContainer.innerHTML += `
-                        <div class="flex justify-between items-center bg-gray-50 border border-gray-200 p-2 rounded-lg text-xs">
-                            <div>
-                                <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
-                                <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
-                            </div>
-                            <button onclick="deleteBooking('${b.id}')" class="text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    `;
-                });
-            }
-
-            document.getElementById('booking-modal').classList.remove('hidden');
-        }
-
-        function closeModal() {
-            document.getElementById('booking-modal').classList.add('hidden');
-        }
-
-        async function saveBooking(event) {
-            event.preventDefault();
-            if (!supabaseClient) return;
-            const tableId = document.getElementById('form-table-id').value;
-            const startTime = document.getElementById('form-start-time').value;
-            const endTime = document.getElementById('form-end-time').value;
-            const name = document.getElementById('form-name').value;
-            const guests = parseInt(document.getElementById('form-guests').value);
-            const phone = document.getElementById('form-phone').value;
-            const dateStr = formatDateKey(currentDate);
-
-            const table = tables.find(t => t.id === tableId);
-            const t = translations[currentLang];
-
-            if (guests > table.seats) {
-                alert(t.errCapacity + table.seats + ")");
-                return;
-            }
-
-            const existingTableBookings = bookings.filter(b => b.tableId === tableId && b.date === dateStr);
-            const hasOverlap = existingTableBookings.some(b => startTime < b.endTime && endTime > b.startTime);
-
-            if (hasOverlap) {
-                alert(t.errOverlap);
-                return;
-            }
-
-            const { error } = await supabaseClient
-                .from('bookings')
-                .insert([{
-                    table_id: tableId,
-                    date: dateStr,
-                    start_time: startTime,
-                    end_time: endTime,
-                    name: name,
-                    guests: guests,
-                    phone: phone,
-                    restaurant_id: currentRestaurantId
-                }]);
-
-            if (error) {
-                alert("Errore salvataggio: " + error.message);
-                return;
-            }
-
-            await loadDataFromSupabase();
-            closeModal();
-            document.getElementById('booking-form').reset();
-        }
-
-        async function deleteBooking(bookingId) {
-            if (!supabaseClient) return;
-            await supabaseClient.from('bookings').delete().eq('id', bookingId);
-            await loadDataFromSupabase();
-            closeModal();
-            renderDailySummary();
-        }
-
-        async function deleteTable(tableId) {
-            if (!supabaseClient) return;
-            if (!confirm("Vuoi davvero eliminare questo tavolo?")) return;
-
-            await supabaseClient.from('bookings').delete().eq('table_id', tableId);
-            await supabaseClient.from('tables').delete().eq('id', tableId);
-            closeModal();
-            await loadDataFromSupabase();
-        }
-    </script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="./css/style.css">
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 flex flex-col min-h-screen">
     
     <!-- Login Section -->
     <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
-        <form onsubmit="eseguiLogin(event)" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
+        <form id="login-form" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
             <h2 class="mb-6 text-2xl font-bold text-center text-gray-800">Restabook Login</h2>
             <input type="email" id="login-email" placeholder="Email" required class="w-full p-3 mb-4 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
             <input type="password" id="login-password" placeholder="Password" required class="w-full p-3 mb-6 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -1099,34 +27,32 @@
     
     <!-- App Container -->
     <div id="app-container" style="display: none;" class="flex-grow">
-
         <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
             <div class="flex items-center space-x-3">
                 <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
                 <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
             </div>
             <div class="flex items-center space-x-4">
-                <button id="btn-toggle-edit" onclick="toggleEditMode()" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
+                <button id="btn-toggle-edit" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
                     <span id="txt-edit-mode">Modifica Sala & Muri / Wände bearbeiten</span>
                 </button>
                 <div class="flex bg-gray-200 rounded-lg p-1">
-                    <button onclick="setLanguage('it')" id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
-                    <button onclick="setLanguage('de')" id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
+                    <button id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
+                    <button id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
                 </div>
                 <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
             </div>
         </header>
 
         <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-
             <div class="space-y-6 lg:col-span-1">
                 <div class="bg-white p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-4">
                         <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
                         <div class="space-x-1">
-                            <button onclick="changeMonth(-1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
-                            <button onclick="changeMonth(1)" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
+                            <button id="cal-prev" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-left"></i></button>
+                            <button id="cal-next" class="p-2 hover:bg-gray-100 rounded-lg"><i class="fa-solid fa-chevron-right"></i></button>
                         </div>
                     </div>
                     <div id="month-year-label" class="text-center font-semibold text-indigo-600 mb-4 capitalize"></div>
@@ -1154,14 +80,13 @@
             </div>
 
             <div class="lg:col-span-3 space-y-6">
-                
                 <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
                     <div id="rooms-tabs-container" class="flex flex-wrap gap-2"></div>
                     <div class="flex items-center space-x-2">
-                        <button id="btn-add-wall" onclick="addCustomWall()" class="hidden bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-700 transition shadow-sm">
+                        <button id="btn-add-wall" class="hidden bg-amber-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-amber-700 transition shadow-sm">
                             <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-wall">+ Muro</span>
                         </button>
-                        <button id="btn-add-room" onclick="openAddRoomModal()" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
+                        <button id="btn-add-room" class="hidden bg-emerald-600 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-emerald-700 transition shadow-sm">
                             <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-room">+ Nuova Sala</span>
                         </button>
                     </div>
@@ -1176,20 +101,18 @@
                         <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
                             <div class="flex items-center space-x-2">
                                 <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
-                                <select id="filter-time" onchange="renderTables()" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
+                                <select id="filter-time" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
                                     <option value="all" id="opt-all">Tutta la giornata / Ganztägig</option>
                                     <option value="12:00-15:00" id="opt-lunch">Pranzo (12-15)</option>
                                     <option value="18:00-21:00" id="opt-dinner1">Cena 1 (18-21)</option>
                                     <option value="21:00-23:30" id="opt-dinner2">Cena 2 (21-23:30)</option>
                                 </select>
                             </div>
-                            <button id="btn-add-table" onclick="openAddTableModal()" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
+                            <button id="btn-add-table" class="hidden bg-indigo-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-indigo-700 transition">
                                 <i class="fa-solid fa-plus mr-1"></i> <span id="txt-add-table">Nuovo Tavolo</span>
                             </button>
                         </div>
                     </div>
-
-                    <!-- CANVAS DINAMICO -->
                     <div id="floor-canvas" class="relative w-full h-[580px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner"></div>
                 </div>
             </div>
@@ -1210,7 +133,6 @@
                         </div>
                     </div>
                 </div>
-
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse text-xs">
                         <thead>
@@ -1230,23 +152,19 @@
         </main>
     </div>
     
-    <!-- Modals -->
+    <!-- Modali (Prenotazione, Tavolo, Sala) -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
-            <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <button id="close-booking-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
             <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
-
             <div id="modal-rotate-container"></div>
-
             <div class="mb-4">
                 <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
                 <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
             </div>
-
             <hr class="my-4 border-gray-100">
-
-            <form id="booking-form" onsubmit="saveBooking(event)" class="space-y-3">
+            <form id="booking-form" class="space-y-3">
                 <input type="hidden" id="form-table-id">
                 <h4 id="modal-form-title" class="text-sm font-bold text-indigo-600 mb-2">Aggiungi nuova prenotazione</h4>
                 <div class="grid grid-cols-2 gap-2">
@@ -1270,7 +188,7 @@
                     </div>
                     <div>
                         <label id="lbl-phone" class="block text-xs font-medium text-gray-600 mb-1">Telefono / Telefon</label>
-                        <input type="tel" id="form-phone" oninput="checkClientPrivacy()" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
+                        <input type="tel" id="form-phone" class="w-full border border-gray-300 rounded-lg p-2 text-sm">
                     </div>
                 </div>
                 <div class="flex items-start space-x-2 my-2" id="privacy-container">
@@ -1286,9 +204,9 @@
     
     <div id="table-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
-            <button onclick="closeTableConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <button id="close-table-config-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-lg font-bold text-gray-900 mb-3" id="config-modal-title">Aggiungi Nuovo Tavolo</h3>
-            <form onsubmit="saveNewTable(event)" class="space-y-3">
+            <form id="table-config-form" class="space-y-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Numero / Nome Tavolo (es. 9 o 10A)</label>
                     <input type="text" id="new-table-number" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
@@ -1311,9 +229,9 @@
 
     <div id="room-config-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
         <div class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-xl relative">
-            <button onclick="closeRoomConfigModal()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+            <button id="close-room-config-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 class="text-lg font-bold text-gray-900 mb-3" id="room-modal-title">Aggiungi Nuova Sala</h3>
-            <form onsubmit="saveNewRoom(event)" class="space-y-3">
+            <form id="room-config-form" class="space-y-3">
                 <div>
                     <label class="block text-xs font-medium text-gray-600 mb-1">Nome della Sala (es. Terrazza)</label>
                     <input type="text" id="new-room-name" required class="w-full border border-gray-300 rounded-lg p-2 text-sm">
@@ -1327,11 +245,12 @@
     <footer class="text-center py-6 text-xs text-gray-500 space-x-4 bg-white border-t border-gray-200 mt-auto">
         <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a>
         <script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
-        
         <span>|</span>
-        
         <a href="https://www.iubenda.com/privacy-policy/88343578/cookie-policy" class="iubenda-black iubenda-noiframe iubenda-embed" title="Cookie-Richtlinie ">Cookie-Richtlinie</a>
         <script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
     </footer>
+
+    <!-- Script principale come Modulo -->
+    <script type="module" src="./js/app.js"></script>
 </body>
 </html>
