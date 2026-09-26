@@ -1,73 +1,93 @@
-// --- INIZIO SUPER-PATCH ADMIN ---
-setTimeout(() => {
-    // 1. SBLOCCO DEL LOGIN INTERNO ALLA SPA
-    const loginForm = document.getElementById('login-form');
-    if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
+// --- INIZIO SUPER-PATCH ADMIN (FORZA BRUTA) ---
+setTimeout(async () => {
+    const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+    
+    let sbClient;
+    if (typeof window.supabase !== 'undefined') {
+        sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+        
+        // 1. SE SEI GIÀ LOGGATO, SALTA IL LOGIN E MOSTRA L'APP
+        const { data } = await sbClient.auth.getSession();
+        if (data && data.session) {
+            document.getElementById('login-container').style.display = 'none';
+            document.getElementById('app-container').style.display = 'flex';
+            creaBottoniAdmin();
+        }
+    }
+
+    // 2. DISTRUGGE IL VECCHIO FORM CHE RICARICA A VUOTO
+    const oldForm = document.getElementById('login-form');
+    if (oldForm && sbClient) {
+        // Cloniamo il form: questo trucco elimina tutti i vecchi eventi che bloccavano l'accesso
+        const newForm = oldForm.cloneNode(true);
+        oldForm.parentNode.replaceChild(newForm, oldForm);
+
+        newForm.addEventListener('submit', async (e) => {
             e.preventDefault(); 
-            e.stopImmediatePropagation(); 
             
-            const btn = loginForm.querySelector('button');
+            const btn = newForm.querySelector('button');
             if (btn) btn.innerText = "Accesso in corso...";
 
             const emailInput = document.getElementById('login-email').value;
             const passwordInput = document.getElementById('login-password').value;
 
-            // Le tue chiavi Supabase corrette
-            const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-            
-            if (typeof window.supabase !== 'undefined') {
-                const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            const { data, error } = await sbClient.auth.signInWithPassword({
+                email: emailInput,
+                password: passwordInput
+            });
+
+            if (error) {
+                alert("Errore di accesso: " + error.message);
+                if (btn) btn.innerText = "Accedi";
+            } else if (data.user) {
+                // 3. ACCESSO RIUSCITO: CAMBIO SCHERMATA ISTANTANEO SENZA RICARICARE!
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('app-container').style.display = 'flex';
                 
-                const { data, error } = await sbClient.auth.signInWithPassword({
-                    email: emailInput,
-                    password: passwordInput
-                });
-
-                if (error) {
-                    alert("Errore di accesso: " + error.message);
-                    if (btn) btn.innerText = "Accedi";
-                } else if (data.user) {
-                    // Ti fa entrare e nasconde il login
-                    window.location.href = '?p=/admin&logged=true'; 
-                }
+                // Aggiorna l'indirizzo senza ricaricare
+                window.history.pushState({}, '', '?p=/admin');
+                creaBottoniAdmin();
             }
         });
     }
 
-    // 2. GENERAZIONE BOTTONI SUPERADMIN (Solo se nell'URL c'è 'admin')
+    // FUNZIONE PER CREARE I BOTTONI DA SUPERADMIN
+    function creaBottoniAdmin() {
+        if (!document.getElementById('admin-super-menu')) {
+            const adminMenu = document.createElement('div');
+            adminMenu.id = 'admin-super-menu';
+            adminMenu.style.position = 'fixed';
+            adminMenu.style.top = '12px';
+            adminMenu.style.right = '350px'; 
+            adminMenu.style.zIndex = '9999';
+            adminMenu.style.display = 'flex';
+            adminMenu.style.gap = '10px';
+
+            adminMenu.innerHTML = `
+                <button id="btn-create-restaurant" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Nuovo Ristorante</button>
+                <button id="btn-logout" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Esci</button>
+            `;
+
+            document.body.appendChild(adminMenu);
+
+            document.getElementById('btn-create-restaurant').addEventListener('click', () => {
+                window.location.href = 'register.html';
+            });
+
+            document.getElementById('btn-logout').addEventListener('click', async () => {
+                if (sbClient) await sbClient.auth.signOut();
+                localStorage.clear();
+                sessionStorage.clear();
+                window.location.href = window.location.pathname; 
+            });
+        }
+    }
+    
+    // Se la pagina ha già "admin" nell'URL, prova a forzare la comparsa dei bottoni
     if (window.location.href.includes('admin')) {
-        const adminMenu = document.createElement('div');
-        adminMenu.style.position = 'fixed';
-        adminMenu.style.top = '12px';
-        adminMenu.style.right = '350px'; 
-        adminMenu.style.zIndex = '9999';
-        adminMenu.style.display = 'flex';
-        adminMenu.style.gap = '10px';
-
-        adminMenu.innerHTML = `
-            <button id="btn-create-restaurant" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Nuovo Ristorante</button>
-            <button id="btn-logout" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Esci</button>
-        `;
-
-        document.body.appendChild(adminMenu);
-
-        document.getElementById('btn-create-restaurant').addEventListener('click', () => {
-            window.location.href = 'register.html';
-        });
-
-        document.getElementById('btn-logout').addEventListener('click', async () => {
-            const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-            const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-            if (typeof window.supabase !== 'undefined') {
-                const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-                await sbClient.auth.signOut();
-            }
-            localStorage.clear();
-            sessionStorage.clear();
-            window.location.href = window.location.pathname; 
-        });
+        creaBottoniAdmin();
     }
-}, 1500);
+
+}, 1000);
 // --- FINE SUPER-PATCH ADMIN ---
