@@ -392,3 +392,35 @@ document.addEventListener('click', async (e) => {
         window.location.href = 'login.html';
     }
 });
+// TRUCCO: Genera i pulsanti Superadmin automaticamente in alto a destra
+setTimeout(() => {
+    const adminMenu = document.createElement('div');
+    adminMenu.style.position = 'fixed';
+    adminMenu.style.top = '12px';
+    adminMenu.style.right = '200px'; // Posizionato accanto a IT/DE
+    adminMenu.style.zIndex = '9999';
+    adminMenu.style.display = 'flex';
+    adminMenu.style.gap = '10px';
+
+    adminMenu.innerHTML = `
+        <button id="btn-create-restaurant" style="background-color: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
+        <button id="btn-logout" style="background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Esci</button>
+    `;
+
+    document.body.appendChild(adminMenu);
+
+    // Azione al click di Nuovo Ristorante
+    document.getElementById('btn-create-restaurant').addEventListener('click', () => {
+        window.location.href = 'register.html';
+    });
+
+    // Azione al click di Esci
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+        if (typeof window.supabase !== 'undefined') {
+            await window.supabase.auth.signOut();
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'login.html'; // Ti rimanda proprio al tuo file login.html!
+    });
+}, 1500); // Aspetta un attimo che la pagina sia completamente caricata
