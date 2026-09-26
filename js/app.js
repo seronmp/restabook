@@ -195,6 +195,8 @@ function openTableModal(tableId) {
     rotateBtnContainer.innerHTML = `
         <button type="button" id="delete-table-modal-btn" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
             <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
+            <button id="btn-create-restaurant" class="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-700 ml-4">+ Nuovo Ristorante</button>
+    <button id="btn-logout" class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 ml-2">Esci</button>
         </button>
     `;
     document.getElementById('delete-table-modal-btn').onclick = async () => {
