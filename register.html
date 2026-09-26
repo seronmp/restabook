@@ -5,15 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Registrazione Ristorante - Onboarding</title>
     <style>
-        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 400px; }
+        body { font-family: Arial, sans-serif; background-color: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; padding: 20px; box-sizing: border-box; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 400px; max-width: 100%; }
         h2 { margin-bottom: 20px; color: #333; text-align: center; }
         .form-group { margin-bottom: 15px; }
         label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px; color: #555; }
-        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-family: inherit; }
+        button { width: 100%; padding: 12px; background-color: #28a745; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: background-color 0.2s; }
         button:hover { background-color: #218838; }
         .message { margin-top: 15px; text-align: center; font-size: 14px; }
+        
+        /* Stile per i campi WA a comparsa */
+        #wa-fields { display: none; padding: 15px; background-color: #f8f9fa; border: 1px dashed #ccc; border-radius: 6px; margin-bottom: 15px; }
+        #wa-fields label { color: #0056b3; }
+        .optional-badge { font-weight: normal; font-size: 11px; color: #888; float: right; margin-top: 2px; }
     </style>
 </head>
 <body>
@@ -25,34 +30,64 @@
                 <label>Nome Ristorante</label>
                 <input type="text" id="name" required placeholder="Es. Pizzeria Da Mario">
             </div>
+            
             <div class="form-group">
                 <label>Email Amministratore</label>
                 <input type="email" id="email" required placeholder="admin@ristorante.com">
             </div>
+            
             <div class="form-group">
                 <label>Password</label>
                 <input type="password" id="password" required placeholder="********">
             </div>
+            
             <div class="form-group">
-                <label>Logo del Ristorante</label>
+                <label>Logo del Ristorante <span class="optional-badge">Opzionale</span></label>
                 <input type="file" id="logoFile" accept="image/*">
             </div>
+
+            <!-- MENU A TENDINA PER IL PIANO SOFTWARE -->
             <div class="form-group">
-                <label>WhatsApp Phone ID (Meta)</label>
-                <input type="text" id="whatsapp_phone_id" placeholder="Es. 109283746501928">
+                <label>Versione Software</label>
+                <select id="software_plan">
+                    <option value="base">Base - Solo Registro Digitale</option>
+                    <option value="pro">Pro - Con Automazioni WhatsApp</option>
+                </select>
             </div>
-            <div class="form-group">
-                <label>WhatsApp Token Permanente (Meta)</label>
-                <input type="text" id="whatsapp_token" placeholder="EAAG...">
+
+            <!-- CAMPI WHATSAPP NASCOSTI DI DEFAULT E NON OBBLIGATORI -->
+            <div id="wa-fields">
+                <p style="font-size: 12px; color: #666; margin-top: 0; margin-bottom: 10px; line-height: 1.4;">Puoi inserire questi dati in un secondo momento dal pannello impostazioni.</p>
+                <div class="form-group">
+                    <label>WhatsApp Phone ID <span class="optional-badge">Opzionale</span></label>
+                    <input type="text" id="whatsapp_phone_id" placeholder="Es. 109283746501928">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label>WhatsApp Token <span class="optional-badge">Opzionale</span></label>
+                    <input type="text" id="whatsapp_token" placeholder="EAAG...">
+                </div>
             </div>
+
             <button type="submit">Crea Account</button>
         </form>
         <div id="responseMessage" class="message"></div>
     </div>
 
-    <!-- Importiamo il client di Supabase per gestire l'upload del logo -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
+        // Logica per mostrare/nascondere i campi WhatsApp in base al piano scelto
+        document.getElementById('software_plan').addEventListener('change', function(e) {
+            const waFields = document.getElementById('wa-fields');
+            if (e.target.value === 'pro') {
+                waFields.style.display = 'block';
+            } else {
+                waFields.style.display = 'none';
+                // Pulisce i campi se l'utente torna alla versione Base
+                document.getElementById('whatsapp_phone_id').value = '';
+                document.getElementById('whatsapp_token').value = '';
+            }
+        });
+
         // Inserisci qui le tue credenziali pubbliche di Supabase
         const SUPABASE_URL = 'IL_TUO_SUPABASE_URL';
         const SUPABASE_ANON_KEY = 'IL_TUO_SUPABASE_ANON_KEY';
@@ -61,29 +96,32 @@
         document.getElementById('registerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const messageDiv = document.getElementById('responseMessage');
+            const submitBtn = document.querySelector('button[type="submit"]');
+            
             messageDiv.style.color = '#333';
-            messageDiv.textContent = 'Caricamento in corso...';
+            messageDiv.textContent = 'Creazione account in corso...';
+            submitBtn.disabled = true;
 
             try {
                 const name = document.getElementById('name').value;
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
+                const plan = document.getElementById('software_plan').value;
                 const whatsapp_phone_id = document.getElementById('whatsapp_phone_id').value;
                 const whatsapp_token = document.getElementById('whatsapp_token').value;
                 const fileInput = document.getElementById('logoFile').files[0];
 
                 let logo_url = '';
 
-                // 1. Se è stato selezionato un logo, caricalo su Supabase Storage
+                // 1. Upload Logo (se presente)
                 if (fileInput) {
                     const fileName = `${Date.now()}_${fileInput.name}`;
                     const { data: uploadData, error: uploadError } = await supabaseClient.storage
-                        .from('logos') // Assicurati di creare un bucket pubblico chiamato 'logos' su Supabase
+                        .from('logos') 
                         .upload(fileName, fileInput);
 
                     if (uploadError) throw new Error('Errore durante il caricamento del logo: ' + uploadError.message);
 
-                    // Ottieni l'URL pubblico del logo
                     const { data: publicUrlData } = supabaseClient.storage
                         .from('logos')
                         .getPublicUrl(fileName);
@@ -91,7 +129,7 @@
                     logo_url = publicUrlData.publicUrl;
                 }
 
-                // 2. Invia i dati al tuo Backend Node.js che abbiamo configurato prima
+                // 2. Invio al Backend
                 const response = await fetch('http://localhost:3000/api/restaurants/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -100,6 +138,7 @@
                         email,
                         password,
                         logo_url,
+                        plan, // Salviamo anche il piano scelto nel database
                         whatsapp_phone_id,
                         whatsapp_token
                     })
@@ -114,10 +153,13 @@
                 messageDiv.style.color = 'green';
                 messageDiv.textContent = 'Registrazione completata con successo! ID: ' + result.restaurantId;
                 document.getElementById('registerForm').reset();
+                document.getElementById('wa-fields').style.display = 'none'; // Resetta la visuale
 
             } catch (err) {
                 messageDiv.style.color = 'red';
                 messageDiv.textContent = err.message;
+            } finally {
+                submitBtn.disabled = false;
             }
         });
     </script>
