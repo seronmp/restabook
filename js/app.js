@@ -11,7 +11,8 @@ setTimeout(async () => {
         const { data } = await sbClient.auth.getSession();
         if (data && data.session) {
             document.getElementById('login-container').style.display = 'none';
-            document.getElementById('app-container').style.display = 'flex';
+            // Corretto in 'block' per mantenere l'impaginazione verticale di Tailwind
+            document.getElementById('app-container').style.display = 'block'; 
             creaBottoniAdmin();
         }
     }
@@ -19,7 +20,6 @@ setTimeout(async () => {
     // 2. DISTRUGGE IL VECCHIO FORM CHE RICARICA A VUOTO
     const oldForm = document.getElementById('login-form');
     if (oldForm && sbClient) {
-        // Cloniamo il form: questo trucco elimina tutti i vecchi eventi che bloccavano l'accesso
         const newForm = oldForm.cloneNode(true);
         oldForm.parentNode.replaceChild(newForm, oldForm);
 
@@ -41,11 +41,11 @@ setTimeout(async () => {
                 alert("Errore di accesso: " + error.message);
                 if (btn) btn.innerText = "Accedi";
             } else if (data.user) {
-                // 3. ACCESSO RIUSCITO: CAMBIO SCHERMATA ISTANTANEO SENZA RICARICARE!
+                // 3. ACCESSO RIUSCITO: CAMBIO SCHERMATA
                 document.getElementById('login-container').style.display = 'none';
-                document.getElementById('app-container').style.display = 'flex';
+                // Corretto in 'block' per mantenere l'impaginazione verticale di Tailwind
+                document.getElementById('app-container').style.display = 'block'; 
                 
-                // Aggiorna l'indirizzo senza ricaricare
                 window.history.pushState({}, '', '?p=/admin');
                 creaBottoniAdmin();
             }
@@ -65,8 +65,8 @@ setTimeout(async () => {
             adminMenu.style.gap = '10px';
 
             adminMenu.innerHTML = `
-                <button id="btn-create-restaurant" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Nuovo Ristorante</button>
-                <button id="btn-logout" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Esci</button>
+                <button id="btn-create-restaurant" style="background-color: white; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
+                <button id="btn-logout" style="background-color: white; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">Esci</button>
             `;
 
             document.body.appendChild(adminMenu);
@@ -84,7 +84,6 @@ setTimeout(async () => {
         }
     }
     
-    // Se la pagina ha già "admin" nell'URL, prova a forzare la comparsa dei bottoni
     if (window.location.href.includes('admin')) {
         creaBottoniAdmin();
     }
