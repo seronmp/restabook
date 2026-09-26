@@ -1,15 +1,18 @@
-// TRUCCO: Genera i pulsanti Superadmin automaticamente in alto
+// TRUCCO: Genera i pulsanti Superadmin solo se siamo nella dashboard
 setTimeout(() => {
+    // Interrompi subito lo script se NON siamo nella pagina admin
+    if (!window.location.href.includes('admin')) {
+        return;
+    }
+
     const adminMenu = document.createElement('div');
     adminMenu.style.position = 'fixed';
     adminMenu.style.top = '12px';
-    // Aumentato da 200px a 350px per spostarli più a sinistra e non coprire IT/DE
     adminMenu.style.right = '350px'; 
     adminMenu.style.zIndex = '9999';
     adminMenu.style.display = 'flex';
     adminMenu.style.gap = '10px';
 
-    // Colori rimossi: impostato background trasparente, testo scuro e un bordo grigio
     adminMenu.innerHTML = `
         <button id="btn-create-restaurant" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">+ Nuovo Ristorante</button>
         <button id="btn-logout" style="background-color: transparent; color: #333; border: 1px solid #ccc; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer;">Esci</button>
@@ -27,6 +30,7 @@ setTimeout(() => {
         }
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = 'login.html';
+        // Ricarica la pagina base senza parametri per tornare al login
+        window.location.href = window.location.pathname; 
     });
 }, 1500);
