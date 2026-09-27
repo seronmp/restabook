@@ -240,3 +240,4 @@ async function loadAndRenderTables() {
 
     mapContainer.appendChild(wrapper);
 }
+setTimeout(loadAndRenderTables, 1500);
