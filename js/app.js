@@ -112,7 +112,7 @@ async function initRestaurantSelector() {
     renderDailySummary(deleteBooking);
 }
 
-function setupEventListeners() {
+(function setupEventListeners() {
     document.getElementById('btn-it').addEventListener('click', () => setLanguage('it'));
     document.getElementById('btn-de').addEventListener('click', () => setLanguage('de'));
 
