@@ -192,6 +192,47 @@ function openTableModal(tableId) {
     checkClientPrivacy();
 
     const rotateBtnContainer = document.getElementById('modal-rotate-container');
+    async function initRestaurantSelector() {
+    const select = document.getElementById('restaurant-select');
+    if (!select || !state.supabaseClient) return;
+
+    // Recupera la lista di tutti i ristoranti da Supabase
+    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
+    if (error) {
+        console.error("Errore caricamento ristoranti:", error);
+        return;
+    }
+
+    // Se l'utente non è admin globale, potresti voler nascondere il selettore o limitarlo
+    // Popola le opzioni
+    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Alle Restaurants</option>`;
+    if (restaurants) {
+        restaurants.forEach(r => {
+            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
+            optionsHtml += `<option value="${r.id}" ${isSelected}>${r.name}</option>`;
+        });
+    }
+    select.innerHTML = optionsHtml;
+
+    // Ascolta il cambio di selezione
+    select.onchange = async (e) => {
+        const selectedId = e.target.value;
+        state.currentRestaurantId = selectedId;
+        
+        if (selectedId === 'tutti') {
+            state.currentRestaurantName = "Admin Globale";
+        } else {
+            const found = restaurants.find(r => r.id === selectedId);
+            state.currentRestaurantName = found ? found.name : '';
+        }
+
+        // Salva la scelta nella sessione e ricarica i dati sulla mappa
+        localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
+        localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
+        
+        await loadData();
+    };
+}
     
     // RIMOSSI I PULSANTI INCASTRATI: Ora c'è solo il pulsante per eliminare il tavolo
     rotateBtnContainer.innerHTML = `
