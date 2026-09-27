@@ -168,31 +168,29 @@ setTimeout(() => {
     }
 }, 1800);
 
-// ==========================================
-// 3. CARICAMENTO E VISUALIZZAZIONE TAVOLI
-// ==========================================
 async function loadAndRenderTables() {
     const restaurantId = localStorage.getItem('current_restaurant_id');
     if (!restaurantId || !window.supabase) return;
 
-    const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
-    const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+    const client = window.supabase.createClient('https://wqnqhmozprrxrcssesoq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY');
 
-    console.log("Cerco tavoli per il ristorante ID:", restaurantId);
-
+    // 1. Verifichiamo se Supabase ci dà i dati
     const { data: tables, error } = await client
         .from('tables')
         .select('*')
         .eq('restaurant_id', restaurantId);
 
-    if (error) {
-        console.error("Errore caricamento tavoli:", error.message);
+    console.log("DATI DA SUPABASE:", tables);
+    if (error) console.error("ERRORE SUPABASE:", error.message);
+
+    // 2. Verifichiamo se trova il riquadro della mappa
+    const mapContainer = document.querySelector('.border-dashed');
+    console.log("CONTENITORE MAPPA TROVATO?", mapContainer);
+
+    if (!mapContainer) {
+        console.error("ERRORE: Il riquadro della mappa non è stato trovato nella pagina HTML.");
         return;
     }
-
-    const mapContainer = document.querySelector('.border-dashed');
-    if (!mapContainer) return;
 
     const oldWrapper = document.getElementById('rendered-tables-wrapper');
     if (oldWrapper) oldWrapper.remove();
@@ -242,5 +240,3 @@ async function loadAndRenderTables() {
 
     mapContainer.appendChild(wrapper);
 }
-
-setTimeout(loadAndRenderTables, 1500);
