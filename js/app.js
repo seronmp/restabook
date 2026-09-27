@@ -23,7 +23,9 @@ async function loadData() {
             queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
         }
 
-        const { data: tablesData } = await queryTables;
+        const { data: tablesData, error: tablesError } = await queryTables;
+        if (tablesError) throw tablesError;
+
         state.tables = (tablesData || []).map(t => ({
             id: t.id,
             table_number: t.table_number,
@@ -38,7 +40,9 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
-        const { data: bookingsData } = await queryBookings;
+        const { data: bookingsData, error: bookingsError } = await queryBookings;
+        if (bookingsError) throw bookingsError;
+
         state.bookings = (bookingsData || []).map(b => ({
             id: b.id,
             tableId: b.table_id,
@@ -55,6 +59,7 @@ async function loadData() {
         console.error("Errore caricamento Supabase:", err.message);
     }
 }
+
 async function initRestaurantSelector() {
     const select = document.getElementById('restaurant-select');
     if (!select || !state.supabaseClient) return;
@@ -65,19 +70,15 @@ async function initRestaurantSelector() {
         return;
     }
 
-    // Se l'ID corrente NON è 'tutti' e corrisponde a un ristorante specifico (es. SportWell),
-    // nascondiamo IMMEDIATAMENTE il selettore in alto e blocchiamo la vista admin.
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti';
 
     if (isSpecificRestaurant) {
         select.style.display = 'none';
-        // Nascondiamo anche i pulsanti admin fissi se presenti
         const adminMenu = document.getElementById('admin-menu-container');
         if (adminMenu) adminMenu.style.display = 'none';
         return;
     }
 
-    // Altrimenti, se siamo in vista Admin ('tutti'), mostriamo il menu a tendina
     select.style.display = 'block';
     let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
     if (restaurants) {
@@ -91,28 +92,29 @@ async function initRestaurantSelector() {
     select.onchange = async (e) => {
         const selectedId = e.target.value;
         state.currentRestaurantId = selectedId;
-        
+
         if (selectedId === 'tutti') {
             state.currentRestaurantName = "Admin Globale";
         } else {
-            const found = restaurants.find(r => r.id === selectedId);
+            const found = restaurants ? restaurants.find(r => r.id === selectedId) : null;
             state.currentRestaurantName = found ? found.name : '';
         }
 
         localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
         localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
-        
+
         await loadData();
     };
 }
-(function refreshUI() {
+
+function refreshUI() {
     renderRooms(refreshUI);
     renderCalendar(refreshUI);
     renderTables(openTableModal);
     renderDailySummary(deleteBooking);
 }
 
-(function setupEventListeners() {
+function setupEventListeners() {
     document.getElementById('btn-it').addEventListener('click', () => setLanguage('it'));
     document.getElementById('btn-de').addEventListener('click', () => setLanguage('de'));
 
@@ -147,13 +149,13 @@ function setLanguage(lang) {
     state.currentLang = lang;
     document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
     document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-    
+
     const t = translations[lang];
     document.getElementById('opt-all').innerText = t.timeFilterAll;
     document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
     document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
     document.getElementById('opt-dinner2').innerText = t.timeFilterDinner2;
-                
+
     document.getElementById('app-title').innerText = state.currentRestaurantName || t.title;
     document.getElementById('calendar-title').innerText = t.calendar;
     document.getElementById('floor-title').innerText = t.floorTitle;
@@ -223,8 +225,9 @@ function addCustomWall() {
 
 function openTableModal(tableId) {
     const table = state.tables.find(t => t.id === tableId);
+    if (!table) return;
     const currentDateStr = formatDateKey(state.currentDate);
-    
+
     document.getElementById('modal-table-title').innerText = `Tavolo / Tisch ${table.table_number}`;
     document.getElementById('modal-table-info').innerText = `${translations[state.currentLang].seats}: ${table.seats} | Data: ${currentDateStr}`;
     document.getElementById('form-table-id').value = tableId;
@@ -233,13 +236,13 @@ function openTableModal(tableId) {
     checkClientPrivacy();
 
     const rotateBtnContainer = document.getElementById('modal-rotate-container');
-    
+
     rotateBtnContainer.innerHTML = `
         <button type="button" id="delete-table-modal-btn" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
             <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
         </button>
     `;
-    
+
     document.getElementById('delete-table-modal-btn').onclick = async () => {
         await state.supabaseClient.from('bookings').delete().eq('table_id', tableId);
         await state.supabaseClient.from('tables').delete().eq('id', tableId);
@@ -249,7 +252,7 @@ function openTableModal(tableId) {
 
     const listContainer = document.getElementById('modal-bookings-list');
     const tableBookings = state.bookings.filter(b => b.tableId === tableId && b.date === currentDateStr);
-    
+
     listContainer.innerHTML = '';
     if (tableBookings.length === 0) {
         listContainer.innerHTML = `<p class="text-xs text-gray-400 italic">${translations[state.currentLang].noBookings}</p>`;
@@ -279,12 +282,14 @@ async function saveBooking(e) {
     const startTime = document.getElementById('form-start-time').value;
     const endTime = document.getElementById('form-end-time').value;
     const name = document.getElementById('form-name').value;
-    const guests = parseInt(document.getElementById('form-guests').value);
+    const guests = parseInt(document.getElementById('form-guests').value, 10);
     const phone = document.getElementById('form-phone').value;
     const dateStr = formatDateKey(state.currentDate);
 
     const table = state.tables.find(t => t.id === tableId);
     const t = translations[state.currentLang];
+
+    if (!table) return;
 
     if (guests > table.seats) {
         alert(t.errCapacity + table.seats + ")");
@@ -333,7 +338,7 @@ async function saveNewTable(e) {
     e.preventDefault();
     if (!state.supabaseClient) return;
     const tableNumber = document.getElementById('new-table-number').value;
-    const seats = parseInt(document.getElementById('new-table-seats').value);
+    const seats = parseInt(document.getElementById('new-table-seats').value, 10);
     const shape = document.getElementById('new-table-shape').value;
 
     const { error } = await state.supabaseClient
@@ -417,12 +422,11 @@ function checkClientPrivacy() {
     }
 }
 
-// Gestione globale dei click per Superadmin
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'btn-create-restaurant') {
         window.location.href = 'register.html';
     }
-    
+
     if (e.target && e.target.id === 'btn-logout') {
         try {
             if (state && state.supabaseClient) {
@@ -431,19 +435,17 @@ document.addEventListener('click', async (e) => {
         } catch (error) {
             console.log("Errore nel logout:", error);
         }
-        
+
         localStorage.clear();
         sessionStorage.clear();
         window.location.href = 'index.html'; 
     }
 });
 
-// Mostra i pulsanti Superadmin fissi in alto SOLO se siamo in vista Admin Globale ('tutti')
 setTimeout(() => {
     const existingMenu = document.getElementById('admin-menu-container');
     if (existingMenu) existingMenu.remove();
 
-    // Mostra il menu admin fisso solo se l'utente ha selezionato "tutti" o è admin
     if (state.currentRestaurantId !== 'tutti') return;
 
     const adminMenu = document.createElement('div');
