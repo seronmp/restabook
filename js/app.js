@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         await loadData();
         setupEventListeners();
         await initRestaurantSelector();
+        setupGlobalHeaderButtons();
     });
 });
 
@@ -19,8 +20,14 @@ async function loadData() {
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
         if (state.currentRestaurantId !== 'tutti') {
-            queryTables = queryTables.eq('restaurant_id', state.currentRestaurantId);
-            queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
+            // Filtro flessibile: cerca per UUID oppure per nome ristorante se presente
+            if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
+                queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
+                queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
+            } else {
+                queryTables = queryTables.eq('restaurant_id', state.currentRestaurantId);
+                queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
+            }
         }
 
         const { data: tablesData, error: tablesError } = await queryTables;
@@ -70,12 +77,12 @@ async function initRestaurantSelector() {
         return;
     }
 
-    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti';
+    // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
+    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
 
     if (isSpecificRestaurant) {
         select.style.display = 'none';
-        const adminMenu = document.getElementById('admin-menu-container');
-        if (adminMenu) adminMenu.style.display = 'none';
         return;
     }
 
@@ -84,20 +91,20 @@ async function initRestaurantSelector() {
     if (restaurants) {
         restaurants.forEach(r => {
             const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
-            optionsHtml += `<option value="${r.id}" ${isSelected}>${r.name}</option>`;
+            optionsHtml += `<option value="${r.id}" data-name="${r.name}" ${isSelected}>${r.name}</option>`;
         });
     }
     select.innerHTML = optionsHtml;
 
     select.onchange = async (e) => {
         const selectedId = e.target.value;
+        const selectedOpt = e.target.options[e.target.selectedIndex];
         state.currentRestaurantId = selectedId;
 
         if (selectedId === 'tutti') {
             state.currentRestaurantName = "Admin Globale";
         } else {
-            const found = restaurants ? restaurants.find(r => r.id === selectedId) : null;
-            state.currentRestaurantName = found ? found.name : '';
+            state.currentRestaurantName = selectedOpt ? selectedOpt.getAttribute('data-name') : '';
         }
 
         localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
@@ -105,6 +112,57 @@ async function initRestaurantSelector() {
 
         await loadData();
     };
+}
+
+// Gestione del tasto Logout e Nuovo Ristorante nella testata
+function setupGlobalHeaderButtons() {
+    const existing = document.getElementById('global-actions-container');
+    if (existing) existing.remove();
+
+    const container = document.createElement('div');
+    container.id = 'global-actions-container';
+    container.className = 'flex items-center space-x-2 ml-4';
+
+    const isAdmin = state.currentRestaurantId === 'tutti' || (localStorage.getItem('userRole') === 'admin');
+
+    let html = '';
+    if (isAdmin) {
+        html += `<button id="btn-create-restaurant-header" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+            <i class="fa-solid fa-plus"></i><span>Ristorante</span>
+        </button>`;
+    }
+
+    html += `<button id="btn-logout-header" class="bg-rose-600 hover:bg-rose-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition flex items-center space-x-1">
+        <i class="fa-solid fa-right-from-bracket"></i><span>Esci</span>
+    </button>`;
+
+    container.innerHTML = html;
+
+    const headerRight = document.querySelector('header .flex.items-center.space-x-4');
+    if (headerRight) {
+        headerRight.appendChild(container);
+    }
+
+    const btnCreate = document.getElementById('btn-create-restaurant-header');
+    if (btnCreate) {
+        btnCreate.onclick = () => window.location.href = 'register.html';
+    }
+
+    const btnLogout = document.getElementById('btn-logout-header');
+    if (btnLogout) {
+        btnLogout.onclick = async () => {
+            try {
+                if (state.supabaseClient) {
+                    await state.supabaseClient.auth.signOut();
+                }
+            } catch (e) {
+                console.log("Logout:", e);
+            }
+            localStorage.clear();
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        };
+    }
 }
 
 function refreshUI() {
@@ -236,7 +294,6 @@ function openTableModal(tableId) {
     checkClientPrivacy();
 
     const rotateBtnContainer = document.getElementById('modal-rotate-container');
-
     rotateBtnContainer.innerHTML = `
         <button type="button" id="delete-table-modal-btn" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
             <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
@@ -353,7 +410,8 @@ async function saveNewTable(e) {
             height: 90,
             rotation: 0,
             room_id: state.currentRoomId,
-            restaurant_id: state.currentRestaurantId
+            restaurant_id: state.currentRestaurantId,
+            restaurant_name: state.currentRestaurantName
         }]);
 
     if (error) {
@@ -421,63 +479,3 @@ function checkClientPrivacy() {
         privacyLabel.innerText = t.privacyNewText;
     }
 }
-
-document.addEventListener('click', async (e) => {
-    if (e.target && e.target.id === 'btn-create-restaurant') {
-        window.location.href = 'register.html';
-    }
-
-    if (e.target && e.target.id === 'btn-logout') {
-        try {
-            if (state && state.supabaseClient) {
-                await state.supabaseClient.auth.signOut();
-            }
-        } catch (error) {
-            console.log("Errore nel logout:", error);
-        }
-
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = 'index.html'; 
-    }
-});
-
-setTimeout(() => {
-    const existingMenu = document.getElementById('admin-menu-container');
-    if (existingMenu) existingMenu.remove();
-
-    if (state.currentRestaurantId !== 'tutti') return;
-
-    const adminMenu = document.createElement('div');
-    adminMenu.id = 'admin-menu-container';
-    adminMenu.style.position = 'fixed';
-    adminMenu.style.top = '12px';
-    adminMenu.style.right = '400px'; 
-    adminMenu.style.zIndex = '9999';
-    adminMenu.style.display = 'flex';
-    adminMenu.style.gap = '10px';
-
-    adminMenu.innerHTML = `
-        <button id="btn-create-restaurant-fixed" style="background-color: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
-        <button id="btn-logout-fixed" style="background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Esci</button>
-    `;
-
-    document.body.appendChild(adminMenu);
-
-    document.getElementById('btn-create-restaurant-fixed').addEventListener('click', () => {
-        window.location.href = 'register.html';
-    });
-
-    document.getElementById('btn-logout-fixed').addEventListener('click', async () => {
-        try {
-            if (typeof window.supabase !== 'undefined') {
-                await window.supabase.auth.signOut();
-            }
-        } catch (e) {
-            console.log("Logout forzato");
-        }
-        localStorage.clear();
-        sessionStorage.clear();
-        window.location.href = 'index.html';
-    });
-}, 1500);
