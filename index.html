@@ -28,10 +28,16 @@
     <!-- App Container -->
     <div id="app-container" style="display: none;" class="flex-grow">
         <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
-            <div class="flex items-center space-x-3">
+            <div class="flex items-center space-x-4">
                 <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
                 <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
+                
+                <!-- SELETTORE / SWITCH DEI RISTORANTI AGGIUNTO QUI -->
+                <select id="restaurant-select" class="bg-gray-50 border border-gray-300 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2 shadow-sm font-medium">
+                    <option value="tutti">Tutti i ristoranti / Admin</option>
+                </select>
             </div>
+            
             <div class="flex items-center space-x-4">
                 <button id="btn-toggle-edit" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
@@ -250,16 +256,14 @@
         <script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script>
     </footer>
 
-    <!-- SCRIPT DI LOGIN AGGIUNTO PER BLOCCARE IL REFRESH -->
+    <!-- SCRIPT DI LOGIN -->
     <script>
-        // 1. INIZIALIZZA SUPABASE (Inserisci i tuoi veri dati qui)
-const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+        const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
         const sbClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-        // 2. GESTISCI IL CLICK SU "ACCEDI"
         document.getElementById('login-form').addEventListener('submit', async (e) => {
-            e.preventDefault(); // Questo comando fondamentale impedisce al form di ricaricare la pagina
+            e.preventDefault();
 
             const emailInput = document.getElementById('login-email').value;
             const passwordInput = document.getElementById('login-password').value;
@@ -278,7 +282,6 @@ const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
                 loginBtn.innerText = "Accedi";
                 loginBtn.disabled = false;
             } else if (data.user) {
-                // Ti reindirizza istantaneamente all'indirizzo admin vero e proprio
                 window.location.href = '?p=/admin'; 
             }
         });
