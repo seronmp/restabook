@@ -164,6 +164,83 @@ setTimeout(() => {
                 if (btnAddRoom) btnAddRoom.classList.add('hidden');
                 if (btnAddTable) btnAddTable.classList.add('hidden');
             }
+            // --- CARICAMENTO E VISUALIZZAZIONE TAVOLI DA SUPABASE ---
+async function loadAndRenderTables() {
+    const restaurantId = localStorage.getItem('current_restaurant_id');
+    if (!restaurantId || !window.supabase) return;
+
+    const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+    const client = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+    // Interroga la tabella 'tables' filtrando per il ristorante attivo
+    const { data: tables, error } = await client
+        .from('tables')
+        .select('*')
+        .eq('restaurant_id', restaurantId);
+
+    if (error) {
+        console.error("Errore caricamento tavoli:", error.message);
+        return;
+    }
+
+    // Trova il contenitore della pianta (il riquadro tratteggiato)
+    const mapContainer = document.querySelector('.border-dashed');
+    if (!mapContainer) return;
+
+    // Rimuove vecchi elementi per evitare duplicati
+    const oldWrapper = document.getElementById('rendered-tables-wrapper');
+    if (oldWrapper) oldWrapper.remove();
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'rendered-tables-wrapper';
+    wrapper.style.position = 'relative';
+    wrapper.style.width = '100%';
+    wrapper.style.height = '100%';
+    wrapper.style.minHeight = '400px';
+
+    if (tables && tables.length > 0) {
+        tables.forEach(t => {
+            const tableEl = document.createElement('div');
+            tableEl.style.position = 'absolute';
+            // Posiziona il tavolo in base alle coordinate salvate o di default
+            tableEl.style.left = (t.x || (50 + Math.random() * 300)) + 'px';
+            tableEl.style.top = (t.y || (50 + Math.random() * 200)) + 'px';
+            tableEl.style.width = '75px';
+            tableEl.style.height = '75px';
+            tableEl.style.backgroundColor = '#10B981'; // Colore verde (Libero)
+            tableEl.style.color = 'white';
+            tableEl.style.borderRadius = '10px';
+            tableEl.style.display = 'flex';
+            tableEl.style.flexDirection = 'column';
+            tableEl.style.alignItems = 'center';
+            tableEl.style.justifyContent = 'center';
+            tableEl.style.fontWeight = 'bold';
+            tableEl.style.cursor = 'pointer';
+            tableEl.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+
+            tableEl.innerHTML = `
+                <span style="font-size: 14px;">${t.name || t.table_number || 'Tavolo'}</span>
+                <span style="font-size: 11px; opacity: 0.9;">${t.seats || 4} posti</span>
+            `;
+
+            wrapper.appendChild(tableEl);
+        });
+    } else {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.paddingTop = '150px';
+        emptyMsg.style.color = '#6B7280';
+        emptyMsg.style.fontWeight = '500';
+        emptyMsg.textContent = 'Nessun tavolo registrato per questo locale. Clicca su "Modifica Sala" per crearne uno!';
+        wrapper.appendChild(emptyMsg);
+    }
+
+    mapContainer.appendChild(wrapper);
+}
+
+// Avvia il caricamento dei tavoli dopo il caricamento della pagina
+setTimeout(loadAndRenderTables, 1500);
         });
     }
 }, 1800);
