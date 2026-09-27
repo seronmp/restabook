@@ -168,32 +168,62 @@ setTimeout(() => {
     }
 }, 1800);
 
+// ==========================================
+// 3. CARICAMENTO E VISUALIZZAZIONE TAVOLI CON SALE (TRAMITE ROOM_ID)
+// ==========================================
 async function loadAndRenderTables() {
     const restaurantId = localStorage.getItem('current_restaurant_id');
     if (!restaurantId || !window.supabase) return;
 
-    const client = window.supabase.createClient('https://wqnqhmozprrxrcssesoq.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY');
+    const supabaseUrl = 'https://wqnqhmozprrxrcssesoq.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndxbnFobW96cHJyeHJjc3Nlc29xIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk2NTQyNzUsImV4cCI6MjEwNTIzMDI3NX0.fDZyZXt0z6NjkDRj9sM5jIdHnoZY5vOHkDQp4h95GMY';
+    const client = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    // 1. Verifichiamo se Supabase ci dà i dati
     const { data: tables, error } = await client
         .from('tables')
         .select('*')
         .eq('restaurant_id', restaurantId);
 
-    console.log("DATI DA SUPABASE:", tables);
-    if (error) console.error("ERRORE SUPABASE:", error.message);
-
-    // 2. Verifichiamo se trova il riquadro della mappa
-    const mapContainer = document.querySelector('.border-dashed');
-    console.log("CONTENITORE MAPPA TROVATO?", mapContainer);
-
-    if (!mapContainer) {
-        console.error("ERRORE: Il riquadro della mappa non è stato trovato nella pagina HTML.");
+    if (error) {
+        console.error("Errore caricamento tavoli:", error.message);
         return;
     }
 
+    const mapContainer = document.querySelector('.border-dashed');
+    if (!mapContainer) return;
+
+    // Pulisci vecchi elementi se ricarichiamo
+    const oldTabs = document.getElementById('room-tabs-container');
+    if (oldTabs) oldTabs.remove();
     const oldWrapper = document.getElementById('rendered-tables-wrapper');
     if (oldWrapper) oldWrapper.remove();
+
+    if (!tables || tables.length === 0) {
+        const emptyMsg = document.createElement('div');
+        emptyMsg.id = 'rendered-tables-wrapper';
+        emptyMsg.style.textAlign = 'center';
+        emptyMsg.style.paddingTop = '150px';
+        emptyMsg.style.color = '#6B7280';
+        emptyMsg.textContent = 'Nessun tavolo registrato per questo locale. Aggiungili dal pannello di controllo.';
+        mapContainer.appendChild(emptyMsg);
+        return;
+    }
+
+    // Trova i room_id unici (se null o vuoto, usa "Sala Principale")
+    const rooms = [...new Set(tables.map(t => t.room_id ? t.room_id : 'Sala Principale'))];
+    let currentRoom = rooms[0];
+
+    // Crea il contenitore dei bottoni delle sale
+    const tabsContainer = document.createElement('div');
+    tabsContainer.id = 'room-tabs-container';
+    tabsContainer.style.display = 'flex';
+    tabsContainer.style.gap = '10px';
+    tabsContainer.style.marginBottom = '15px';
+    tabsContainer.style.padding = '10px';
+    tabsContainer.style.backgroundColor = '#F3F4F6';
+    tabsContainer.style.borderRadius = '8px';
+    
+    mapContainer.parentNode.insertBefore(tabsContainer, mapContainer);
 
     const wrapper = document.createElement('div');
     wrapper.id = 'rendered-tables-wrapper';
@@ -201,9 +231,30 @@ async function loadAndRenderTables() {
     wrapper.style.width = '100%';
     wrapper.style.height = '100%';
     wrapper.style.minHeight = '400px';
+    mapContainer.appendChild(wrapper);
 
-    if (tables && tables.length > 0) {
-        tables.forEach(t => {
+    // Funzione che disegna i tavoli della sala selezionata
+    function renderRoom(selectedRoom) {
+        wrapper.innerHTML = ''; 
+        
+        // Colora il bottone attivo
+        Array.from(tabsContainer.children).forEach(btn => {
+            if (btn.dataset.room === String(selectedRoom)) {
+                btn.style.backgroundColor = '#4F46E5'; 
+                btn.style.color = 'white';
+            } else {
+                btn.style.backgroundColor = '#E5E7EB'; 
+                btn.style.color = '#374151';
+            }
+        });
+
+        // Filtra i tavoli per il room_id selezionato
+        const filteredTables = tables.filter(t => {
+            const tableRoom = t.room_id ? t.room_id : 'Sala Principale';
+            return tableRoom === selectedRoom;
+        });
+
+        filteredTables.forEach(t => {
             const tableEl = document.createElement('div');
             tableEl.style.position = 'absolute';
             tableEl.style.left = (t.pos_x || (50 + Math.random() * 300)) + 'px';
@@ -212,7 +263,8 @@ async function loadAndRenderTables() {
             tableEl.style.height = '75px';
             tableEl.style.backgroundColor = '#10B981'; 
             tableEl.style.color = 'white';
-            tableEl.style.borderRadius = '10px';
+            
+            tableEl.style.borderRadius = t.shape === 'circle' ? '50%' : '10px'; 
             tableEl.style.display = 'flex';
             tableEl.style.flexDirection = 'column';
             tableEl.style.alignItems = 'center';
@@ -228,16 +280,28 @@ async function loadAndRenderTables() {
 
             wrapper.appendChild(tableEl);
         });
-    } else {
-        const emptyMsg = document.createElement('div');
-        emptyMsg.style.textAlign = 'center';
-        emptyMsg.style.paddingTop = '150px';
-        emptyMsg.style.color = '#6B7280';
-        emptyMsg.style.fontWeight = '500';
-        emptyMsg.textContent = 'Nessun tavolo registrato per questo locale. Clicca su "Modifica Sala" per crearne uno!';
-        wrapper.appendChild(emptyMsg);
     }
 
-    mapContainer.appendChild(wrapper);
+    // Crea un bottone cliccabile per ogni room_id trovato
+    rooms.forEach(room => {
+        const btn = document.createElement('button');
+        // Se il room_id è un numero (es. 1, 2), aggiungiamo la parola "Sala " per renderlo più bello
+        const isNumeric = !isNaN(room) && room !== 'Sala Principale';
+        btn.innerText = isNumeric ? `Sala ${room}` : room;
+        
+        btn.dataset.room = room; // Salva il valore originale nel dataset
+        btn.style.padding = '8px 16px';
+        btn.style.borderRadius = '6px';
+        btn.style.fontWeight = 'bold';
+        btn.style.cursor = 'pointer';
+        btn.style.border = 'none';
+        btn.style.transition = 'all 0.2s';
+        
+        btn.addEventListener('click', () => renderRoom(room));
+        tabsContainer.appendChild(btn);
+    });
+
+    renderRoom(currentRoom);
 }
+
 setTimeout(loadAndRenderTables, 1500);
