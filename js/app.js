@@ -7,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuth(async () => {
         await loadData();
         setupEventListeners();
+        await initRestaurantSelector(); // Attiva il menu a tendina in alto
     });
 });
 
@@ -37,7 +38,7 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
-      const { data: bookingsData } = await queryBookings;
+        const { data: bookingsData } = await queryBookings;
         state.bookings = (bookingsData || []).map(b => ({
             id: b.id,
             tableId: b.table_id,
@@ -53,6 +54,43 @@ async function loadData() {
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
     }
+}
+
+async function initRestaurantSelector() {
+    const select = document.getElementById('restaurant-select');
+    if (!select || !state.supabaseClient) return;
+
+    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
+    if (error) {
+        console.error("Errore caricamento ristoranti:", error);
+        return;
+    }
+
+    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin</option>`;
+    if (restaurants) {
+        restaurants.forEach(r => {
+            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
+            optionsHtml += `<option value="${r.id}" ${isSelected}>${r.name}</option>`;
+        });
+    }
+    select.innerHTML = optionsHtml;
+
+    select.onchange = async (e) => {
+        const selectedId = e.target.value;
+        state.currentRestaurantId = selectedId;
+        
+        if (selectedId === 'tutti') {
+            state.currentRestaurantName = "Admin Globale";
+        } else {
+            const found = restaurants.find(r => r.id === selectedId);
+            state.currentRestaurantName = found ? found.name : '';
+        }
+
+        localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
+        localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
+        
+        await loadData();
+    };
 }
 
 function refreshUI() {
@@ -192,49 +230,7 @@ function openTableModal(tableId) {
     checkClientPrivacy();
 
     const rotateBtnContainer = document.getElementById('modal-rotate-container');
-    async function initRestaurantSelector() {
-    const select = document.getElementById('restaurant-select');
-    if (!select || !state.supabaseClient) return;
-
-    // Recupera la lista di tutti i ristoranti da Supabase
-    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
-    if (error) {
-        console.error("Errore caricamento ristoranti:", error);
-        return;
-    }
-
-    // Se l'utente non è admin globale, potresti voler nascondere il selettore o limitarlo
-    // Popola le opzioni
-    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Alle Restaurants</option>`;
-    if (restaurants) {
-        restaurants.forEach(r => {
-            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
-            optionsHtml += `<option value="${r.id}" ${isSelected}>${r.name}</option>`;
-        });
-    }
-    select.innerHTML = optionsHtml;
-
-    // Ascolta il cambio di selezione
-    select.onchange = async (e) => {
-        const selectedId = e.target.value;
-        state.currentRestaurantId = selectedId;
-        
-        if (selectedId === 'tutti') {
-            state.currentRestaurantName = "Admin Globale";
-        } else {
-            const found = restaurants.find(r => r.id === selectedId);
-            state.currentRestaurantName = found ? found.name : '';
-        }
-
-        // Salva la scelta nella sessione e ricarica i dati sulla mappa
-        localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
-        localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
-        
-        await loadData();
-    };
-}
     
-    // RIMOSSI I PULSANTI INCASTRATI: Ora c'è solo il pulsante per eliminare il tavolo
     rotateBtnContainer.innerHTML = `
         <button type="button" id="delete-table-modal-btn" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
             <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
@@ -420,12 +416,10 @@ function checkClientPrivacy() {
 
 // Gestione globale dei click per le funzioni da Superadmin (Nuovo ristorante / Logout)
 document.addEventListener('click', async (e) => {
-    // Reindirizza alla pagina di creazione ristorante
     if (e.target && e.target.id === 'btn-create-restaurant') {
         window.location.href = 'register.html';
     }
     
-    // Esegue il logout "pulito"
     if (e.target && e.target.id === 'btn-logout') {
         try {
             if (state && state.supabaseClient) {
@@ -435,13 +429,13 @@ document.addEventListener('click', async (e) => {
             console.log("Errore nel logout, procedo comunque allo svuotamento memoria:", error);
         }
         
-        // Svuota completamente la memoria e reindirizza alla pagina base (lato cliente)
         localStorage.clear();
         sessionStorage.clear();
         window.location.href = 'index.html'; 
     }
 });
-// TRUCCO: Genera i pulsanti Superadmin con collegamento diretto e sicuro
+
+// Generatore pulsanti Superadmin fissi in alto
 setTimeout(() => {
     if (document.getElementById('admin-menu-container')) return;
 
@@ -449,7 +443,7 @@ setTimeout(() => {
     adminMenu.id = 'admin-menu-container';
     adminMenu.style.position = 'fixed';
     adminMenu.style.top = '12px';
-    adminMenu.style.right = '850px'; 
+    adminMenu.style.right = '650px'; 
     adminMenu.style.zIndex = '9999';
     adminMenu.style.display = 'flex';
     adminMenu.style.gap = '10px';
@@ -461,7 +455,6 @@ setTimeout(() => {
 
     document.body.appendChild(adminMenu);
 
-    // Assegnazione diretta degli eventi senza filtri globali
     document.getElementById('btn-create-restaurant-fixed').addEventListener('click', () => {
         window.location.href = 'register.html';
     });
