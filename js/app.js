@@ -414,13 +414,20 @@ setTimeout(() => {
         window.location.href = 'register.html';
     });
 
-    // Azione al click di Esci
+   // Azione al click di Esci (A prova di bomba)
     document.getElementById('btn-logout').addEventListener('click', async () => {
-        if (typeof window.supabase !== 'undefined') {
-            await window.supabase.auth.signOut();
+        try {
+            if (state && state.supabaseClient) {
+                await state.supabaseClient.auth.signOut();
+            }
+        } catch (e) {
+            console.log("Logout Supabase bypassato");
         }
+        
+        // Svuota la memoria del browser
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = 'login.html'; // Ti rimanda proprio al tuo file login.html!
+        
+        // Ti riporta al sito lato cliente (senza il /admin)
+        window.location.href = 'index.html'; 
     });
-}, 1500); // Aspetta un attimo che la pagina sia completamente caricata
