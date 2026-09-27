@@ -192,13 +192,14 @@ function openTableModal(tableId) {
     checkClientPrivacy();
 
     const rotateBtnContainer = document.getElementById('modal-rotate-container');
+    
+    // RIMOSSI I PULSANTI INCASTRATI: Ora c'è solo il pulsante per eliminare il tavolo
     rotateBtnContainer.innerHTML = `
         <button type="button" id="delete-table-modal-btn" class="w-full bg-rose-600 text-white font-medium py-1.5 rounded-lg hover:bg-rose-700 transition text-xs mb-3">
             <i class="fa-solid fa-trash mr-1"></i> Elimina Tavolo / Tisch löschen
-            <button id="btn-create-restaurant" class="bg-green-600 text-white px-3 py-1 text-sm rounded hover:bg-green-700 ml-4">+ Nuovo Ristorante</button>
-    <button id="btn-logout" class="bg-red-500 text-white px-3 py-1 text-sm rounded hover:bg-red-600 ml-2">Esci</button>
         </button>
     `;
+    
     document.getElementById('delete-table-modal-btn').onclick = async () => {
         await state.supabaseClient.from('bookings').delete().eq('table_id', tableId);
         await state.supabaseClient.from('tables').delete().eq('id', tableId);
@@ -375,29 +376,41 @@ function checkClientPrivacy() {
         privacyLabel.innerText = t.privacyNewText;
     }
 }
-// Gestione dei click per le funzioni da Superadmin
+
+// Gestione globale dei click per le funzioni da Superadmin (Nuovo ristorante / Logout)
 document.addEventListener('click', async (e) => {
     // Reindirizza alla pagina di creazione ristorante
     if (e.target && e.target.id === 'btn-create-restaurant') {
         window.location.href = 'register.html';
     }
     
-    // Esegue il logout, pulisce la sessione e torna al login
+    // Esegue il logout "pulito"
     if (e.target && e.target.id === 'btn-logout') {
-        if (typeof supabase !== 'undefined') {
-            await supabase.auth.signOut();
+        try {
+            if (state && state.supabaseClient) {
+                await state.supabaseClient.auth.signOut();
+            }
+        } catch (error) {
+            console.log("Errore nel logout, procedo comunque allo svuotamento memoria:", error);
         }
+        
+        // Svuota completamente la memoria e reindirizza alla pagina base (lato cliente)
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = 'login.html';
+        window.location.href = 'index.html'; 
     }
 });
+
 // TRUCCO: Genera i pulsanti Superadmin automaticamente in alto a destra
 setTimeout(() => {
+    // Controlla che i pulsanti non esistano già, per evitare doppioni
+    if (document.getElementById('admin-menu-container')) return;
+
     const adminMenu = document.createElement('div');
+    adminMenu.id = 'admin-menu-container';
     adminMenu.style.position = 'fixed';
     adminMenu.style.top = '12px';
-    adminMenu.style.right = '850px'; // Posizionato accanto a IT/DE
+    adminMenu.style.right = '200px'; 
     adminMenu.style.zIndex = '9999';
     adminMenu.style.display = 'flex';
     adminMenu.style.gap = '10px';
@@ -408,26 +421,4 @@ setTimeout(() => {
     `;
 
     document.body.appendChild(adminMenu);
-
-    // Azione al click di Nuovo Ristorante
-    document.getElementById('btn-create-restaurant').addEventListener('click', () => {
-        window.location.href = 'register.html';
-    });
-
-   // Azione al click di Esci (A prova di bomba)
-    document.getElementById('btn-logout').addEventListener('click', async () => {
-        try {
-            if (state && state.supabaseClient) {
-                await state.supabaseClient.auth.signOut();
-            }
-        } catch (e) {
-            console.log("Logout Supabase bypassato");
-        }
-        
-        // Svuota la memoria del browser
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Ti riporta al sito lato cliente (senza il /admin)
-        window.location.href = 'index.html'; 
-    });
+}, 1500);
