@@ -400,25 +400,41 @@ document.addEventListener('click', async (e) => {
         window.location.href = 'index.html'; 
     }
 });
-
-// TRUCCO: Genera i pulsanti Superadmin automaticamente in alto a destra
+// TRUCCO: Genera i pulsanti Superadmin con collegamento diretto e sicuro
 setTimeout(() => {
-    // Controlla che i pulsanti non esistano già, per evitare doppioni
     if (document.getElementById('admin-menu-container')) return;
 
     const adminMenu = document.createElement('div');
     adminMenu.id = 'admin-menu-container';
     adminMenu.style.position = 'fixed';
     adminMenu.style.top = '12px';
-    adminMenu.style.right = '850px'; 
+    adminMenu.style.right = '200px'; 
     adminMenu.style.zIndex = '9999';
     adminMenu.style.display = 'flex';
     adminMenu.style.gap = '10px';
 
     adminMenu.innerHTML = `
-        <button id="btn-create-restaurant" style="background-color: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
-        <button id="btn-logout" style="background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Esci</button>
+        <button id="btn-create-restaurant-fixed" style="background-color: #16a34a; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">+ Nuovo Ristorante</button>
+        <button id="btn-logout-fixed" style="background-color: #ef4444; color: white; padding: 6px 12px; border-radius: 6px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">Esci</button>
     `;
 
     document.body.appendChild(adminMenu);
+
+    // Assegnazione diretta degli eventi senza filtri globali
+    document.getElementById('btn-create-restaurant-fixed').addEventListener('click', () => {
+        window.location.href = 'register.html';
+    });
+
+    document.getElementById('btn-logout-fixed').addEventListener('click', async () => {
+        try {
+            if (typeof window.supabase !== 'undefined') {
+                await window.supabase.auth.signOut();
+            }
+        } catch (e) {
+            console.log("Logout forzato");
+        }
+        localStorage.clear();
+        sessionStorage.clear();
+        window.location.href = 'index.html';
+    });
 }, 1500);
