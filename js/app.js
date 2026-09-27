@@ -55,7 +55,6 @@ async function loadData() {
         console.error("Errore caricamento Supabase:", err.message);
     }
 }
-
 async function initRestaurantSelector() {
     const select = document.getElementById('restaurant-select');
     if (!select || !state.supabaseClient) return;
@@ -66,17 +65,19 @@ async function initRestaurantSelector() {
         return;
     }
 
-    // Verifica se l'utente è un admin globale o un singolo ristorante
-    // (Se l'ID salvato corrisponde esattamente a un ristorante e non è 'tutti', nascondiamo i comandi globali se necessario)
-    const isGlobalAdmin = state.currentRestaurantId === 'tutti' || !restaurants.some(r => r.id === state.currentRestaurantId);
+    // Se l'ID corrente NON è 'tutti' e corrisponde a un ristorante specifico (es. SportWell),
+    // nascondiamo IMMEDIATAMENTE il selettore in alto e blocchiamo la vista admin.
+    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti';
 
-    if (!isGlobalAdmin) {
-        // Se è un utente di un singolo ristorante (es. SportWell), nascondiamo il selettore in alto
+    if (isSpecificRestaurant) {
         select.style.display = 'none';
+        // Nascondiamo anche i pulsanti admin fissi se presenti
+        const adminMenu = document.getElementById('admin-menu-container');
+        if (adminMenu) adminMenu.style.display = 'none';
         return;
     }
 
-    // Se è Admin, popola il menu a tendina
+    // Altrimenti, se siamo in vista Admin ('tutti'), mostriamo il menu a tendina
     select.style.display = 'block';
     let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
     if (restaurants) {
@@ -104,8 +105,7 @@ async function initRestaurantSelector() {
         await loadData();
     };
 }
-
-function refreshUI() {
+(function refreshUI() {
     renderRooms(refreshUI);
     renderCalendar(refreshUI);
     renderTables(openTableModal);
