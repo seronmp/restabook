@@ -7,7 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initAuth(async () => {
         await loadData();
         setupEventListeners();
-        await initRestaurantSelector(); // Attiva il menu a tendina in alto
+        await initRestaurantSelector();
     });
 });
 
@@ -66,7 +66,19 @@ async function initRestaurantSelector() {
         return;
     }
 
-    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin</option>`;
+    // Verifica se l'utente è un admin globale o un singolo ristorante
+    // (Se l'ID salvato corrisponde esattamente a un ristorante e non è 'tutti', nascondiamo i comandi globali se necessario)
+    const isGlobalAdmin = state.currentRestaurantId === 'tutti' || !restaurants.some(r => r.id === state.currentRestaurantId);
+
+    if (!isGlobalAdmin) {
+        // Se è un utente di un singolo ristorante (es. SportWell), nascondiamo il selettore in alto
+        select.style.display = 'none';
+        return;
+    }
+
+    // Se è Admin, popola il menu a tendina
+    select.style.display = 'block';
+    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
     if (restaurants) {
         restaurants.forEach(r => {
             const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
@@ -101,11 +113,9 @@ function refreshUI() {
 }
 
 function setupEventListeners() {
-    // Lingua
     document.getElementById('btn-it').addEventListener('click', () => setLanguage('it'));
     document.getElementById('btn-de').addEventListener('click', () => setLanguage('de'));
 
-    // Calendario mesi
     document.getElementById('cal-prev').addEventListener('click', () => {
         state.currentDate.setMonth(state.currentDate.getMonth() - 1);
         renderCalendar(refreshUI);
@@ -115,27 +125,20 @@ function setupEventListeners() {
         renderCalendar(refreshUI);
     });
 
-    // Filtro orario
     document.getElementById('filter-time').addEventListener('change', () => renderTables(openTableModal));
-
-    // Modalità modifica
     document.getElementById('btn-toggle-edit').addEventListener('click', toggleEditMode);
 
-    // Aggiungi muri/sale/tavoli
     document.getElementById('btn-add-wall').addEventListener('click', addCustomWall);
     document.getElementById('btn-add-room').addEventListener('click', () => document.getElementById('room-config-modal').classList.remove('hidden'));
     document.getElementById('btn-add-table').addEventListener('click', () => document.getElementById('table-config-modal').classList.remove('hidden'));
 
-    // Chiusura modali
     document.getElementById('close-booking-modal').addEventListener('click', () => document.getElementById('booking-modal').classList.add('hidden'));
     document.getElementById('close-table-config-modal').addEventListener('click', () => document.getElementById('table-config-modal').classList.add('hidden'));
     document.getElementById('close-room-config-modal').addEventListener('click', () => document.getElementById('room-config-modal').classList.add('hidden'));
 
-    // Form di prenotazione
     document.getElementById('booking-form').addEventListener('submit', saveBooking);
     document.getElementById('form-phone').addEventListener('input', checkClientPrivacy);
 
-    // Form nuovo tavolo e sala
     document.getElementById('table-config-form').addEventListener('submit', saveNewTable);
     document.getElementById('room-config-form').addEventListener('submit', saveNewRoom);
 }
@@ -414,7 +417,7 @@ function checkClientPrivacy() {
     }
 }
 
-// Gestione globale dei click per le funzioni da Superadmin (Nuovo ristorante / Logout)
+// Gestione globale dei click per Superadmin
 document.addEventListener('click', async (e) => {
     if (e.target && e.target.id === 'btn-create-restaurant') {
         window.location.href = 'register.html';
@@ -426,7 +429,7 @@ document.addEventListener('click', async (e) => {
                 await state.supabaseClient.auth.signOut();
             }
         } catch (error) {
-            console.log("Errore nel logout, procedo comunque allo svuotamento memoria:", error);
+            console.log("Errore nel logout:", error);
         }
         
         localStorage.clear();
@@ -435,15 +438,19 @@ document.addEventListener('click', async (e) => {
     }
 });
 
-// Generatore pulsanti Superadmin fissi in alto
+// Mostra i pulsanti Superadmin fissi in alto SOLO se siamo in vista Admin Globale ('tutti')
 setTimeout(() => {
-    if (document.getElementById('admin-menu-container')) return;
+    const existingMenu = document.getElementById('admin-menu-container');
+    if (existingMenu) existingMenu.remove();
+
+    // Mostra il menu admin fisso solo se l'utente ha selezionato "tutti" o è admin
+    if (state.currentRestaurantId !== 'tutti') return;
 
     const adminMenu = document.createElement('div');
     adminMenu.id = 'admin-menu-container';
     adminMenu.style.position = 'fixed';
     adminMenu.style.top = '12px';
-    adminMenu.style.right = '650px'; 
+    adminMenu.style.right = '400px'; 
     adminMenu.style.zIndex = '9999';
     adminMenu.style.display = 'flex';
     adminMenu.style.gap = '10px';
