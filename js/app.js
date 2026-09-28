@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
+    // 1. Caricamento immediato delle stanze dal localStorage
     const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
     const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
     if (savedRooms) {
@@ -23,12 +24,6 @@ async function loadData() {
         }
     }
 
-    // 2. Subito dopo c'è il controllo standard (che adesso non bloccherà più il caricamento della sala)
-    if (!state.currentRestaurantId || !state.supabaseClient) return;
-
-    try {
-        let queryTables = state.supabaseClient.from('tables').select('*');
-        // ... resto del codice invariato ...
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
     try {
@@ -36,7 +31,6 @@ async function loadData() {
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
         if (state.currentRestaurantId !== 'tutti') {
-            // Filtro flessibile: cerca per UUID oppure per nome ristorante se presente
             if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
                 queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
                 queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
@@ -76,21 +70,12 @@ async function loadData() {
             guests: b.guests,
             phone: b.phone
         }));
-        
-// Carica la configurazione salvata localmente per le stanze/muri
-    const restId = state.currentRestaurantId || 'default';
-    const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
-    if (savedRooms) {
-        try {
-            state.rooms = JSON.parse(savedRooms);
-        } catch (e) {
-            console.error("Errore lettura stanze locali:", e);
-        }
-    }
+
         refreshUI();
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
     }
+}
 
 async function initRestaurantSelector() {
     const select = document.getElementById('restaurant-select');
@@ -101,16 +86,7 @@ async function initRestaurantSelector() {
         console.error("Errore caricamento ristoranti:", error);
         return;
     }
-    
-// Carica le stanze/muri personalizzati salvati in locale per questo ristorante
-const savedRooms = localStorage.getItem('rooms_' + state.currentRestaurantId);
-if (savedRooms) {
-    try {
-        state.rooms = JSON.parse(savedRooms);
-    } catch (e) {
-        console.error("Errore lettura stanze locali:", e);
-    }
-}
+
     // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
@@ -150,9 +126,12 @@ if (savedRooms) {
 
 function saveRoomsToLocal() {
     if (state.currentRestaurantId) {
-        localStorage.setItem('rooms_' + state.currentRestaurantId, JSON.stringify(state.rooms));
+        const roomsData = JSON.stringify(state.rooms);
+        localStorage.setItem('rooms_' + state.currentRestaurantId, roomsData);
+        localStorage.setItem('restabook_rooms_global', roomsData);
     }
 }
+
 // Gestione del tasto Logout e Nuovo Ristorante nella testata
 function setupGlobalHeaderButtons() {
     const existing = document.getElementById('global-actions-container');
@@ -317,7 +296,7 @@ function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) return;
     room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
-    saveRoomsToLocal()
+    saveRoomsToLocal();
     renderTables(openTableModal);
 }
 
@@ -430,7 +409,6 @@ async function saveBooking(e) {
                     date: dateStr, 
                     time: startTime, 
                     guests: guests,
-                    // ATTENZIONE: Controlla che questo nome sia identico a quello approvato su Meta!
                     templateName: "conferma_prenotazione" 
                 }
             });
@@ -516,29 +494,17 @@ function checkClientPrivacy() {
     const privacyLabel = document.getElementById('privacy-label-text');
     const t = translations[state.currentLang];
 
-    if (!phoneInput) {
-        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-        privacyConsent.required = true;
-        privacyConsent.checked = false;
-        privacyConsent.disabled = false;
-        privacyLabel.innerText = t.privacyNewText;
-        return;
-    }
+    if (!privacyConsent) return;
 
-    const existingClient = state.bookings.some(b => b.phone && b.phone.trim() === phoneInput);
+    // Gestione inserimento manuale da parte del ristoratore (senza blocchi obbligatori)
+    privacyConsent.required = false;
+    privacyConsent.checked = true; 
 
-    if (existingClient) {
-        privacyConsent.checked = true;
-        privacyConsent.required = false;
-        privacyConsent.disabled = true;
-        privacyLabel.innerText = t.privacyText;
+    if (privacyContainer) {
         privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-    } else {
-        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-        privacyConsent.required = true;
-        privacyConsent.checked = false;
-        privacyConsent.disabled = false;
-        privacyLabel.innerText = t.privacyNewText;
     }
-}
+    
+    if (privacyLabel) {
+        privacyLabel.innerText = t.privacyText || "Datenschutzbestimmungen akzeptiert";
+    }
 }
