@@ -403,7 +403,9 @@ async function deleteTableAction(tableId) {
     // Ricaricamento gestito da app.js
 }
 function saveRoomsToLocal() {
-    if (state.currentRestaurantId) {
-        localStorage.setItem('rooms_' + state.currentRestaurantId, JSON.stringify(state.rooms));
-    }
+    const restId = state.currentRestaurantId || 'default';
+    const roomsData = JSON.stringify(state.rooms);
+    localStorage.setItem('restabook_rooms_' + restId, roomsData);
+    localStorage.setItem('restabook_rooms_global', roomsData); // Fallback di sicurezza
+}
 }
