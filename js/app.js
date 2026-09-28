@@ -60,7 +60,17 @@ async function loadData() {
             guests: b.guests,
             phone: b.phone
         }));
-
+        
+// Carica la configurazione salvata localmente per le stanze/muri
+    const restId = state.currentRestaurantId || 'default';
+    const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
+    if (savedRooms) {
+        try {
+            state.rooms = JSON.parse(savedRooms);
+        } catch (e) {
+            console.error("Errore lettura stanze locali:", e);
+        }
+    }
         refreshUI();
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
