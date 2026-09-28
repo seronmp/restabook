@@ -12,24 +12,47 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
+
+async function initRestaurantSelector() {
+    const select = document.getElementById('restaurant-select');
+    if (!select || !state.supabaseClient) return;
+
+    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
+    if (error) {
+        console.error("Errore caricamento ristoranti:", error);
+        return;
+    }
 async function loadData() {
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
     try {
+        let queryRooms = state.supabaseClient.from('rooms').select('*');
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
         if (state.currentRestaurantId !== 'tutti') {
-            // Filtro flessibile: cerca per UUID oppure per nome ristorante se presente
             if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
+                queryRooms = queryRooms.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName}`);
                 queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
                 queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
             } else {
+                queryRooms = queryRooms.eq('restaurant_id', state.currentRestaurantId);
                 queryTables = queryTables.eq('restaurant_id', state.currentRestaurantId);
                 queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
             }
         }
 
+        // 1. Carica le stanze/muri da Supabase
+        const { data: roomsData, error: roomsError } = await queryRooms;
+        if (!roomsError && roomsData && roomsData.length > 0) {
+            state.rooms = roomsData.map(r => ({
+                id: r.id,
+                name: r.name,
+                walls: r.walls || []
+            }));
+        }
+
+        // 2. Carica i tavoli
         const { data: tablesData, error: tablesError } = await queryTables;
         if (tablesError) throw tablesError;
 
@@ -47,6 +70,7 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
+        // 3. Carica le prenotazioni
         const { data: bookingsData, error: bookingsError } = await queryBookings;
         if (bookingsError) throw bookingsError;
 
@@ -66,17 +90,6 @@ async function loadData() {
         console.error("Errore caricamento Supabase:", err.message);
     }
 }
-
-async function initRestaurantSelector() {
-    const select = document.getElementById('restaurant-select');
-    if (!select || !state.supabaseClient) return;
-
-    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
-    if (error) {
-        console.error("Errore caricamento ristoranti:", error);
-        return;
-    }
-
     // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
