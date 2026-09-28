@@ -76,7 +76,16 @@ async function initRestaurantSelector() {
         console.error("Errore caricamento ristoranti:", error);
         return;
     }
-
+    
+// Carica le stanze/muri personalizzati salvati in locale per questo ristorante
+const savedRooms = localStorage.getItem('rooms_' + state.currentRestaurantId);
+if (savedRooms) {
+    try {
+        state.rooms = JSON.parse(savedRooms);
+    } catch (e) {
+        console.error("Errore lettura stanze locali:", e);
+    }
+}
     // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
@@ -114,6 +123,11 @@ async function initRestaurantSelector() {
     };
 }
 
+function saveRoomsToLocal() {
+    if (state.currentRestaurantId) {
+        localStorage.setItem('rooms_' + state.currentRestaurantId, JSON.stringify(state.rooms));
+    }
+}
 // Gestione del tasto Logout e Nuovo Ristorante nella testata
 function setupGlobalHeaderButtons() {
     const existing = document.getElementById('global-actions-container');
