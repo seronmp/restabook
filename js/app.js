@@ -92,7 +92,6 @@ async function loadData() {
         console.error("Errore caricamento Supabase:", err.message);
     }
 }
-
 async function initRestaurantSelector() {
     const select = document.getElementById('restaurant-select');
     if (!select || !state.supabaseClient) return;
