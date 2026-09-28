@@ -26,33 +26,20 @@ async function loadData() {
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
     try {
-        let queryRooms = state.supabaseClient.from('rooms').select('*');
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
         if (state.currentRestaurantId !== 'tutti') {
             if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
-                queryRooms = queryRooms.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName}`);
                 queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
                 queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
             } else {
-                queryRooms = queryRooms.eq('restaurant_id', state.currentRestaurantId);
                 queryTables = queryTables.eq('restaurant_id', state.currentRestaurantId);
                 queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
             }
         }
 
-        // 1. Carica le stanze/muri da Supabase
-        const { data: roomsData, error: roomsError } = await queryRooms;
-        if (!roomsError && roomsData && roomsData.length > 0) {
-            state.rooms = roomsData.map(r => ({
-                id: r.id,
-                name: r.name,
-                walls: r.walls || []
-            }));
-        }
-
-        // 2. Carica i tavoli
+        // Caricamento Tavoli
         const { data: tablesData, error: tablesError } = await queryTables;
         if (tablesError) throw tablesError;
 
@@ -70,7 +57,7 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
-        // 3. Carica le prenotazioni
+        // Caricamento Prenotazioni
         const { data: bookingsData, error: bookingsError } = await queryBookings;
         if (bookingsError) throw bookingsError;
 
@@ -89,42 +76,6 @@ async function loadData() {
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
     }
-}
-    // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
-    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
-
-    if (isSpecificRestaurant) {
-        select.style.display = 'none';
-        return;
-    }
-
-    select.style.display = 'block';
-    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
-    if (restaurants) {
-        restaurants.forEach(r => {
-            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
-            optionsHtml += `<option value="${r.id}" data-name="${r.name}" ${isSelected}>${r.name}</option>`;
-        });
-    }
-    select.innerHTML = optionsHtml;
-
-    select.onchange = async (e) => {
-        const selectedId = e.target.value;
-        const selectedOpt = e.target.options[e.target.selectedIndex];
-        state.currentRestaurantId = selectedId;
-
-        if (selectedId === 'tutti') {
-            state.currentRestaurantName = "Admin Globale";
-        } else {
-            state.currentRestaurantName = selectedOpt ? selectedOpt.getAttribute('data-name') : '';
-        }
-
-        localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
-        localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
-
-        await loadData();
-    };
 }
 
 // Gestione del tasto Logout e Nuovo Ristorante nella testata
