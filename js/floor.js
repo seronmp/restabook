@@ -74,6 +74,7 @@ export function renderTables(onTableClick) {
                 wallDiv.onclick = (e) => {
                     if(e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
                     wall.type = wall.type === 'wall' ? 'door' : 'wall';
+                    saveRoomsToLocal();
                     renderTables(onTableClick);
                 };
 
@@ -216,6 +217,7 @@ function splitWall(roomObj, index) {
     w.y2 = midY;
 
     roomObj.walls.splice(index + 1, 0, newWallSegment);
+    saveRoomsToLocal();
     renderTables();
 }
 
@@ -225,6 +227,7 @@ function removeWall(roomObj, index) {
         return;
     }
     roomObj.walls.splice(index, 1);
+    saveRoomsToLocal();
     renderTables();
 }
 
@@ -251,6 +254,7 @@ function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
 
 function enableWallDrag(handleEl, wallObj, pointType, callback) {
     let isDragging = false;
+    saveRoomsToLocal();
     handleEl.style.touchAction = 'none';
 
     handleEl.addEventListener('pointerdown', (e) => {
