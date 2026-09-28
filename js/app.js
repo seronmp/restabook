@@ -13,6 +13,22 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
+    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
+    const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
+    if (savedRooms) {
+        try {
+            state.rooms = JSON.parse(savedRooms);
+        } catch (e) {
+            console.error("Errore lettura stanze locali:", e);
+        }
+    }
+
+    // 2. Subito dopo c'è il controllo standard (che adesso non bloccherà più il caricamento della sala)
+    if (!state.currentRestaurantId || !state.supabaseClient) return;
+
+    try {
+        let queryTables = state.supabaseClient.from('tables').select('*');
+        // ... resto del codice invariato ...
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
     try {
