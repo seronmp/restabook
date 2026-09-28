@@ -408,4 +408,3 @@ function saveRoomsToLocal() {
     localStorage.setItem('restabook_rooms_' + restId, roomsData);
     localStorage.setItem('restabook_rooms_global', roomsData); // Fallback di sicurezza
 }
-}
