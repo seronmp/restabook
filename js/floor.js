@@ -398,3 +398,8 @@ async function deleteTableAction(tableId) {
     document.getElementById('booking-modal').classList.add('hidden');
     // Ricaricamento gestito da app.js
 }
+function saveRoomsToLocal() {
+    if (state.currentRestaurantId) {
+        localStorage.setItem('rooms_' + state.currentRestaurantId, JSON.stringify(state.rooms));
+    }
+}
