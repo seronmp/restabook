@@ -445,7 +445,28 @@ async function saveNewTable(e) {
     document.getElementById('new-table-number').value = '';
     await loadData();
 }
+function checkClientPrivacy() {
+    const phoneInput = document.getElementById('form-phone').value.trim();
+    const privacyContainer = document.getElementById('privacy-container');
+    const privacyConsent = document.getElementById('privacy-consent');
+    const privacyLabel = document.getElementById('privacy-label-text');
+    const t = translations[state.currentLang];
 
+    if (!privacyConsent) return;
+
+    // Per l'inserimento manuale da parte del ristoratore, 
+    // evitiamo di bloccare il salvataggio rendendo il consenso non obbligatorio
+    privacyConsent.required = false;
+    privacyConsent.checked = true; // Lo impostiamo automaticamente su spuntato
+
+    if (privacyContainer) {
+        privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+    }
+    
+    if (privacyLabel) {
+        privacyLabel.innerText = t.privacyText || "Datenschutzbestimmungen akzeptiert";
+    }
+}
 async function saveNewRoom(e) {
     e.preventDefault();
     const roomName = document.getElementById('new-room-name').value.trim();
@@ -469,35 +490,4 @@ async function saveNewRoom(e) {
     refreshUI();
 }
 
-function checkClientPrivacy() {
-    const phoneInput = document.getElementById('form-phone').value.trim();
-    const privacyContainer = document.getElementById('privacy-container');
-    const privacyConsent = document.getElementById('privacy-consent');
-    const privacyLabel = document.getElementById('privacy-label-text');
-    const t = translations[state.currentLang];
 
-    if (!phoneInput) {
-        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-        privacyConsent.required = true;
-        privacyConsent.checked = false;
-        privacyConsent.disabled = false;
-        privacyLabel.innerText = t.privacyNewText;
-        return;
-    }
-
-    const existingClient = state.bookings.some(b => b.phone && b.phone.trim() === phoneInput);
-
-    if (existingClient) {
-        privacyConsent.checked = true;
-        privacyConsent.required = false;
-        privacyConsent.disabled = true;
-        privacyLabel.innerText = t.privacyText;
-        privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-    } else {
-        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-        privacyConsent.required = true;
-        privacyConsent.checked = false;
-        privacyConsent.disabled = false;
-        privacyLabel.innerText = t.privacyNewText;
-    }
-}
