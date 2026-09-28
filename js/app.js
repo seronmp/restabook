@@ -12,16 +12,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-
-async function initRestaurantSelector() {
-    const select = document.getElementById('restaurant-select');
-    if (!select || !state.supabaseClient) return;
-
-    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
-    if (error) {
-        console.error("Errore caricamento ristoranti:", error);
-        return;
-    }
 async function loadData() {
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
@@ -30,6 +20,7 @@ async function loadData() {
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
         if (state.currentRestaurantId !== 'tutti') {
+            // Filtro flessibile: cerca per UUID oppure per nome ristorante se presente
             if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
                 queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
                 queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
@@ -39,7 +30,6 @@ async function loadData() {
             }
         }
 
-        // Caricamento Tavoli
         const { data: tablesData, error: tablesError } = await queryTables;
         if (tablesError) throw tablesError;
 
@@ -57,7 +47,6 @@ async function loadData() {
             restaurant_id: t.restaurant_id
         }));
 
-        // Caricamento Prenotazioni
         const { data: bookingsData, error: bookingsError } = await queryBookings;
         if (bookingsError) throw bookingsError;
 
@@ -76,6 +65,53 @@ async function loadData() {
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
     }
+}
+
+async function initRestaurantSelector() {
+    const select = document.getElementById('restaurant-select');
+    if (!select || !state.supabaseClient) return;
+
+    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
+    if (error) {
+        console.error("Errore caricamento ristoranti:", error);
+        return;
+    }
+
+    // Se l'utente è un singolo ristorante e non è admin, nascondiamo il selettore
+    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
+
+    if (isSpecificRestaurant) {
+        select.style.display = 'none';
+        return;
+    }
+
+    select.style.display = 'block';
+    let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
+    if (restaurants) {
+        restaurants.forEach(r => {
+            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
+            optionsHtml += `<option value="${r.id}" data-name="${r.name}" ${isSelected}>${r.name}</option>`;
+        });
+    }
+    select.innerHTML = optionsHtml;
+
+    select.onchange = async (e) => {
+        const selectedId = e.target.value;
+        const selectedOpt = e.target.options[e.target.selectedIndex];
+        state.currentRestaurantId = selectedId;
+
+        if (selectedId === 'tutti') {
+            state.currentRestaurantName = "Admin Globale";
+        } else {
+            state.currentRestaurantName = selectedOpt ? selectedOpt.getAttribute('data-name') : '';
+        }
+
+        localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
+        localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
+
+        await loadData();
+    };
 }
 
 // Gestione del tasto Logout e Nuovo Ristorante nella testata
@@ -409,28 +445,7 @@ async function saveNewTable(e) {
     document.getElementById('new-table-number').value = '';
     await loadData();
 }
-function checkClientPrivacy() {
-    const phoneInput = document.getElementById('form-phone').value.trim();
-    const privacyContainer = document.getElementById('privacy-container');
-    const privacyConsent = document.getElementById('privacy-consent');
-    const privacyLabel = document.getElementById('privacy-label-text');
-    const t = translations[state.currentLang];
 
-    if (!privacyConsent) return;
-
-    // Per l'inserimento manuale da parte del ristoratore, 
-    // evitiamo di bloccare il salvataggio rendendo il consenso non obbligatorio
-    privacyConsent.required = false;
-    privacyConsent.checked = true; // Lo impostiamo automaticamente su spuntato
-
-    if (privacyContainer) {
-        privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
-    }
-    
-    if (privacyLabel) {
-        privacyLabel.innerText = t.privacyText || "Datenschutzbestimmungen akzeptiert";
-    }
-}
 async function saveNewRoom(e) {
     e.preventDefault();
     const roomName = document.getElementById('new-room-name').value.trim();
@@ -454,4 +469,35 @@ async function saveNewRoom(e) {
     refreshUI();
 }
 
+function checkClientPrivacy() {
+    const phoneInput = document.getElementById('form-phone').value.trim();
+    const privacyContainer = document.getElementById('privacy-container');
+    const privacyConsent = document.getElementById('privacy-consent');
+    const privacyLabel = document.getElementById('privacy-label-text');
+    const t = translations[state.currentLang];
 
+    if (!phoneInput) {
+        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+        privacyConsent.required = true;
+        privacyConsent.checked = false;
+        privacyConsent.disabled = false;
+        privacyLabel.innerText = t.privacyNewText;
+        return;
+    }
+
+    const existingClient = state.bookings.some(b => b.phone && b.phone.trim() === phoneInput);
+
+    if (existingClient) {
+        privacyConsent.checked = true;
+        privacyConsent.required = false;
+        privacyConsent.disabled = true;
+        privacyLabel.innerText = t.privacyText;
+        privacyContainer.classList.add('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+    } else {
+        privacyContainer.classList.remove('bg-indigo-50/60', 'border', 'border-indigo-100', 'p-2', 'rounded-lg');
+        privacyConsent.required = true;
+        privacyConsent.checked = false;
+        privacyConsent.disabled = false;
+        privacyLabel.innerText = t.privacyNewText;
+    }
+}
