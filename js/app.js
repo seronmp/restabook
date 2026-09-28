@@ -361,6 +361,7 @@ async function saveBooking(e) {
         return;
     }
 
+    // 1. Salva nel database
     const { error } = await state.supabaseClient
         .from('bookings')
         .insert([{
@@ -379,6 +380,27 @@ async function saveBooking(e) {
         return;
     }
 
+    // 2. Invia la notifica WhatsApp tramite la Edge Function
+    if (phone && phone.trim() !== "") {
+        try {
+            await state.supabaseClient.functions.invoke('send-whatsapp', {
+                body: { 
+                    phone: phone, 
+                    name: name, 
+                    date: dateStr, 
+                    time: startTime, 
+                    guests: guests,
+                    // ATTENZIONE: Controlla che questo nome sia identico a quello approvato su Meta!
+                    templateName: "conferma_prenotazione" 
+                }
+            });
+            console.log("Richiesta WhatsApp inviata con successo per il numero:", phone);
+        } catch (waError) {
+            console.error("Errore durante l'invio del messaggio WhatsApp:", waError);
+        }
+    }
+
+    // 3. Ricarica i dati e chiudi il form
     await loadData();
     document.getElementById('booking-modal').classList.add('hidden');
     document.getElementById('booking-form').reset();
