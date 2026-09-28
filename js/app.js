@@ -292,6 +292,7 @@ function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) return;
     room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
+    saveRoomsToLocal()
     renderTables(openTableModal);
 }
 
@@ -477,7 +478,7 @@ async function saveNewRoom(e) {
         ]
     });
     state.currentRoomId = newId;
-
+    saveRoomsToLocal();
     document.getElementById('room-config-modal').classList.add('hidden');
     document.getElementById('new-room-name').value = '';
     refreshUI();
