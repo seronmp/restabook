@@ -285,13 +285,17 @@ function toggleEditMode() {
     renderTables(openTableModal);
 }
 
-async function saveRoomsToLocal() {
+function saveRoomsToLocal() {
     const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
+    if (!state.rooms || state.rooms.length === 0) return;
+    
     const roomsData = JSON.stringify(state.rooms);
     
-    // Salva sempre nel localStorage per una risposta immediata dell'interfaccia
+    // Salvataggio locale persistente per ristorante
     localStorage.setItem('rooms_' + restId, roomsData);
     localStorage.setItem('restabook_rooms_global', roomsData);
+    console.log("Stanze e muri salvati correttamente in locale per il ristorante:", restId);
+}
 
     // Se siamo collegati a Supabase e c'è un ristorante valido, salviamo sul database
     if (state.supabaseClient && restId && restId !== 'tutti') {
