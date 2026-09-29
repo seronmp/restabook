@@ -13,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
-    // 1. Controlli di sicurezza: se manca il client o l'ID, usciamo senza fare richieste errate
     if (!state.supabaseClient) {
         console.warn("Client Supabase non ancora inizializzato.");
         return;
@@ -26,7 +25,6 @@ async function loadData() {
     }
 
     try {
-        // 2. Chiamata sicura a Supabase per la configurazione delle stanze/muri
         const { data, error } = await state.supabaseClient
             .from('restaurants')
             .select('rooms_config')
@@ -38,7 +36,6 @@ async function loadData() {
         } else if (data && data.rooms_config && data.rooms_config.length > 0) {
             state.rooms = data.rooms_config;
         } else {
-            // Fallback sul localStorage se il cloud è vuoto
             const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
             if (savedRooms) {
                 try {
@@ -121,8 +118,8 @@ async function initRestaurantSelector() {
     let optionsHtml = `<option value="tutti">Tutti i ristoranti / Admin (Vista Globale)</option>`;
     if (restaurants) {
         restaurants.forEach(r => {
-            const isSelected = r.id === state.currentRestaurantId ? 'selected' : '';
-            optionsHtml += `<option value="${r.id}" data-name="${r.name}" ${isSelected}>${r.name}</option>`;
+            const isSelected = r.restaurant_id === state.currentRestaurantId ? 'selected' : '';
+            optionsHtml += `<option value="${r.restaurant_id}" data-name="${r.name}" ${isSelected}>${r.name}</option>`;
         });
     }
     select.innerHTML = optionsHtml;
@@ -145,7 +142,6 @@ async function initRestaurantSelector() {
     };
 }
 
-// Gestione del tasto Logout e Nuovo Ristorante nella testata
 function setupGlobalHeaderButtons() {
     const existing = document.getElementById('global-actions-container');
     if (existing) existing.remove();
@@ -311,20 +307,18 @@ async function saveRoomsToLocal() {
     
     const roomsData = JSON.stringify(state.rooms);
     
-    // 1. Backup locale infallibile
     if (restId) {
         localStorage.setItem('restabook_rooms_' + restId, roomsData);
         localStorage.setItem('rooms_' + restId, roomsData);
     }
     localStorage.setItem('restabook_rooms_global', roomsData);
 
-    // 2. Salvataggio su Supabase
     if (state.supabaseClient && restId && restId !== 'tutti') {
         try {
             const { data, error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
-                .eq('id', restId) // <--- ASSICURATI CHE CI SIANO GLI APICI INTORNO AL NOME!
+                .eq('restaurant_id', restId)
                 .select();
 
             if (error) {
@@ -341,6 +335,7 @@ async function saveRoomsToLocal() {
         }
     }
 }
+
 async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) {
