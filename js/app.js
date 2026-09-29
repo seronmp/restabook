@@ -25,7 +25,7 @@ async function loadData() {
     }
 
     try {
-        const { data, error } = await state.supabaseClient
+   const { data, error } = await state.supabaseClient
             .from('restaurants')
             .select('rooms_config')
             .eq('restaurant_id', restId)
@@ -34,12 +34,18 @@ async function loadData() {
         if (error) {
             console.error("Errore caricamento Supabase (rooms_config):", error.message);
         } else if (data && data.rooms_config && data.rooms_config.length > 0) {
-            state.rooms = data.rooms_config;
+            // 1. Se il database ha dei muri salvati, questa è la verità assoluta
+            state.rooms = typeof data.rooms_config === 'string' ? JSON.parse(data.rooms_config) : data.rooms_config;
         } else {
+            // 2. Se il database è vuoto ([]), cerchiamo nel localStorage
             const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
             if (savedRooms) {
                 try {
                     state.rooms = JSON.parse(savedRooms);
+                    // 3. Forziamo immediatamente il salvataggio sul database per riempire quel vuoto
+                    if (state.rooms.length > 0) {
+                        setTimeout(() => window.saveRoomsToLocal(), 500);
+                    }
                 } catch (e) {
                     console.error("Errore parsing stanze locali:", e);
                 }
