@@ -311,30 +311,39 @@ async function saveRoomsToLocal() {
     
     const roomsData = JSON.stringify(state.rooms);
     
+    // 1. Backup locale infallibile
     if (restId) {
         localStorage.setItem('restabook_rooms_' + restId, roomsData);
         localStorage.setItem('rooms_' + restId, roomsData);
     }
     localStorage.setItem('restabook_rooms_global', roomsData);
 
+    // 2. Salvataggio su Supabase
     if (state.supabaseClient && restId && restId !== 'tutti') {
         try {
-            const { error } = await state.supabaseClient
+            // ATTENZIONE: Se in loadData hai cambiato 'id' in 'restaurant_id', cambialo anche qui sotto!
+            const nomeColonnaID = 'id'; // <--- Modifica questo se la tua colonna si chiama in un altro modo
+
+            const { data, error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
-                .eq('id', restId);
+                .eq(nomeColonnaID, restId)
+                .select(); // Forziamo Supabase a restituire il record per capire se ha davvero salvato
 
             if (error) {
                 console.error("Errore nel salvataggio su Supabase:", error.message);
+                alert("Errore nel salvataggio: " + error.message);
+            } else if (!data || data.length === 0) {
+                console.warn("Nessuna riga modificata! Il database sta bloccando il salvataggio.");
+                alert("Salvataggio fallito: Permessi negati. Controlla le policy RLS su Supabase per la tabella 'restaurants'.");
             } else {
-                console.log("Stanze e muri salvati con successo su Supabase!");
+                console.log("Stanze e muri salvati con SUCCESSO su Supabase per:", restId);
             }
         } catch (err) {
-            console.error("Errore di rete:", err);
+            console.error("Errore di rete durante il salvataggio:", err);
         }
     }
 }
-
 async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) {
