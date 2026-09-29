@@ -424,7 +424,6 @@ export function renderTables(onTableClick) {
 
         canvas.appendChild(tableEl);
     });
-}
 
 function splitWall(roomObj, index) {
     const w = roomObj.walls[index];
