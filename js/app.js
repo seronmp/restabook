@@ -13,9 +13,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
-    // 1. Caricamento immediato delle stanze dal localStorage
     const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
-    const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
+    const savedRooms = localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
+    
     if (savedRooms) {
         try {
             state.rooms = JSON.parse(savedRooms);
@@ -286,40 +286,53 @@ function toggleEditMode() {
 }
 
 async function saveRoomsToLocal() {
-    if (state.currentRestaurantId) {
-        const roomsData = JSON.stringify(state.rooms);
-        localStorage.setItem('rooms_' + state.currentRestaurantId, roomsData);
-        localStorage.setItem('restabook_rooms_global', roomsData);
+    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
+    const roomsData = JSON.stringify(state.rooms);
+    
+    // Salva sempre nel localStorage per una risposta immediata dell'interfaccia
+    localStorage.setItem('rooms_' + restId, roomsData);
+    localStorage.setItem('restabook_rooms_global', roomsData);
 
-        // Salvataggio di backup/sincronizzazione su Supabase (se la tabella o il campo lo supporta)
-        if (state.supabaseClient && state.currentRestaurantId !== 'tutti') {
-            try {
-                // Salviamo la configurazione delle stanze/muri come preferenza o metadato nel database se necessario
-                await state.supabaseClient
-                    .from('restaurants')
-                    .update({ rooms_config: state.rooms })
-                    .eq('id', state.currentRestaurantId);
-            } catch (err) {
-                console.error("Errore salvataggio stanze su Supabase:", err);
+    // Se siamo collegati a Supabase e c'è un ristorante valido, salviamo sul database
+    if (state.supabaseClient && restId && restId !== 'tutti') {
+        try {
+            // Salviamo la configurazione JSON all'interno di una tabella o aggiorniamo il record del ristorante
+            // Se la colonna 'rooms_config' non esiste nella tabella restaurants, salviamo in un campo JSONB o gestiamo l'upsert
+            const { error } = await state.supabaseClient
+                .from('restaurants')
+                .update({ rooms_config: state.rooms })
+                .eq('id', restId);
+
+            if (error) {
+                console.warn("Colonna rooms_config non trovata o errore Supabase, i muri restano salvati in locale:", error.message);
+            } else {
+                console.log("Stanze e muri salvati con successo su Supabase!");
             }
+        } catch (err) {
+            console.error("Errore di rete durante il salvataggio dei muri:", err);
         }
     }
 }
 
 async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
-    if (!room) return;
+    if (!room) {
+        alert("Seleziona prima una sala valida!");
+        return;
+    }
     
-    // Inizializza l'array walls se non esiste
     if (!room.walls) {
         room.walls = [];
     }
 
-    room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
+    // Aggiunge un nuovo muro con coordinate predefinite al centro della sala
+    room.walls.push({ x1: 50, y1: 50, x2: 250, y2: 50, type: 'wall' });
     
-    // Salva sia in locale che sul database
+    // Esegue il salvataggio persistente
     await saveRoomsToLocal();
-    renderTables(openTableModal);
+    
+    // Aggiorna la grafica della planimetria
+    refreshUI();
 }
 
 function openTableModal(tableId) {
