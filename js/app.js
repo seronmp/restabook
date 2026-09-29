@@ -13,16 +13,38 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function loadData() {
-    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
-    const savedRooms = localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
+    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId');
     
+    // Se siamo collegati a Supabase, proviamo a scaricare i muri/stanze dal cloud
+    if (state.supabaseClient && restId && restId !== 'tutti') {
+        try {
+            const { data, error } = await state.supabaseClient
+                .from('restaurants')
+                .select('rooms_config')
+                .eq('id', restId)
+                .single();
+                
+            if (data && data.rooms_config && data.rooms_config.length > 0) {
+                state.rooms = data.rooms_config;
+                console.log("Stanze caricate da Supabase!");
+                refreshUI();
+                return;
+            }
+        } catch (e) {
+            console.log("Caricamento da cloud non riuscito, uso il fallback locale.");
+        }
+    }
+    
+    // Fallback sul localStorage se il cloud è vuoto
+    const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
     if (savedRooms) {
         try {
             state.rooms = JSON.parse(savedRooms);
         } catch (e) {
-            console.error("Errore lettura stanze locali:", e);
+            console.error("Errore parsing stanze locali:", e);
         }
     }
+}
 
     if (!state.currentRestaurantId || !state.supabaseClient) return;
 
@@ -285,40 +307,37 @@ function toggleEditMode() {
     renderTables(openTableModal);
 }
 
-function saveRoomsToLocal() {
-    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId') || 'default';
+async function saveRoomsToLocal() {
+    const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId');
     if (!state.rooms || state.rooms.length === 0) return;
     
     const roomsData = JSON.stringify(state.rooms);
     
-    // Salvataggio sincronizzato con tutte le possibili chiavi di lettura
-    localStorage.setItem('restabook_rooms_' + restId, roomsData);
-    localStorage.setItem('rooms_' + restId, roomsData);
+    // Salvataggio locale immediato (backup)
+    if (restId) {
+        localStorage.setItem('restabook_rooms_' + restId, roomsData);
+        localStorage.setItem('rooms_' + restId, roomsData);
+    }
     localStorage.setItem('restabook_rooms_global', roomsData);
-    
-    console.log("Stanze e muri salvati correttamente per il ristorante:", restId);
-}
 
-    // Se siamo collegati a Supabase e c'è un ristorante valido, salviamo sul database
+    // Salvataggio persistente su Supabase nella nuova colonna rooms_config
     if (state.supabaseClient && restId && restId !== 'tutti') {
         try {
-            // Salviamo la configurazione JSON all'interno di una tabella o aggiorniamo il record del ristorante
-            // Se la colonna 'rooms_config' non esiste nella tabella restaurants, salviamo in un campo JSONB o gestiamo l'upsert
             const { error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
                 .eq('id', restId);
 
             if (error) {
-                console.warn("Colonna rooms_config non trovata o errore Supabase, i muri restano salvati in locale:", error.message);
+                console.error("Errore nel salvataggio su Supabase:", error.message);
             } else {
                 console.log("Stanze e muri salvati con successo su Supabase!");
             }
         } catch (err) {
-            console.error("Errore di rete durante il salvataggio dei muri:", err);
+            console.error("Errore di rete:", err);
         }
     }
-
+}
 async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) {
