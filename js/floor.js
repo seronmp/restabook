@@ -287,7 +287,7 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
     document.addEventListener('pointerup', () => {
         if (isDragging) {
             isDragging = false;
-            saveRoomsToLocal(); // Salva correttamente quando rilasci il muro
+            saveRoomsToLocal(); // Salva correttamente nel localStorage quando rilasci il muro
         }
     });
 }
