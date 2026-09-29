@@ -254,7 +254,6 @@ function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
 
 function enableWallDrag(handleEl, wallObj, pointType, callback) {
     let isDragging = false;
-    saveRoomsToLocal();
     handleEl.style.touchAction = 'none';
 
     handleEl.addEventListener('pointerdown', (e) => {
@@ -267,6 +266,7 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
     document.addEventListener('pointermove', (e) => {
         if (!isDragging || !state.isEditMode) return;
         const canvas = document.getElementById('floor-canvas');
+        if (!canvas) return;
         const rect = canvas.getBoundingClientRect();
         
         let rawX = Math.max(0, Math.min(e.clientX - rect.left, canvas.clientWidth));
@@ -284,6 +284,14 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
         }
         renderTables(callback);
     });
+
+    document.addEventListener('pointerup', () => {
+        if (isDragging) {
+            isDragging = false;
+            saveRoomsToLocal(); // <-- ORA SALVA CORRETTAMENTE QUANDO RILASCI IL MURO
+        }
+    });
+}
 
     document.addEventListener('pointerup', () => { isDragging = false; });
 }
