@@ -111,7 +111,7 @@ async function initRestaurantSelector() {
         console.error("Errore caricamento ristoranti:", error);
         return;
     }
-
+    state.allRestaurants = restaurants || [];
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
 
