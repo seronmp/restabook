@@ -327,7 +327,7 @@ async function saveRoomsToLocal() {
             const { data, error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
-                .eq(nomeColonnaID, restId)
+                .eq(restaurant_id, restId)
                 .select(); // Forziamo Supabase a restituire il record per capire se ha davvero salvato
 
             if (error) {
