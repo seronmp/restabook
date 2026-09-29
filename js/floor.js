@@ -1,9 +1,6 @@
 import { state, translations } from './config.js';
 import { formatDateKey } from './calendar.js';
 
-import { state, translations } from './config.js';
-import { formatDateKey } from './calendar.js';
-
 export function renderRooms(onRoomChange) {
     const container = document.getElementById('rooms-tabs-container');
     if (!container) return;
