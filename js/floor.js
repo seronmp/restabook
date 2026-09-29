@@ -251,7 +251,6 @@ function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
     }
     return { x: snappedX, y: snappedY };
 }
-
 function enableWallDrag(handleEl, wallObj, pointType, callback) {
     let isDragging = false;
     handleEl.style.touchAction = 'none';
@@ -288,13 +287,13 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
     document.addEventListener('pointerup', () => {
         if (isDragging) {
             isDragging = false;
-            saveRoomsToLocal(); // <-- ORA SALVA CORRETTAMENTE QUANDO RILASCI IL MURO
+            saveRoomsToLocal(); // Salva correttamente quando rilasci il muro
         }
     });
 }
 
-    document.addEventListener('pointerup', () => { isDragging = false; });
 
+    document.addEventListener('pointerup', () => { isDragging = false; });
 
 function enableTableDrag(element, tableId, width, height) {
     let isDragging = false;
