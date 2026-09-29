@@ -294,7 +294,7 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
 }
 
     document.addEventListener('pointerup', () => { isDragging = false; });
-}
+
 
 function enableTableDrag(element, tableId, width, height) {
     let isDragging = false;
