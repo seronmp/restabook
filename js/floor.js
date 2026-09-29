@@ -36,7 +36,8 @@ export function renderTables(onTableClick) {
 
             const wallDiv = document.createElement('div');
             const isDoor = wall.type === 'door';
-            wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-2' : 'bg-slate-700 h-1.5'} rounded transition-all`;
+            wallDiv.id = `wall-${wallIndex}`;
+            wallDiv.className = `absolute ${isDoor ? 'bg-amber-200/90 border border-dashed border-amber-500 h-2' : 'bg-slate-700 h-1.5'} rounded transition-colors`;
             wallDiv.style.left = `${wall.x1}px`;
             wallDiv.style.top = `${wall.y1}px`;
             wallDiv.style.width = `${length}px`;
@@ -49,18 +50,25 @@ export function renderTables(onTableClick) {
             }
 
             if (state.isEditMode) {
-                wallDiv.classList.add('cursor-pointer', 'ring-2', 'ring-indigo-400');
-                const midControl = document.createElement('div');
-                midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90';
+                wallDiv.classList.add('cursor-move', 'ring-2', 'ring-indigo-400');
                 
-                const splitLabel = state.currentLang === 'de' ? 'Teilen' : 'Dividi';
-                const deleteLabel = state.currentLang === 'de' ? 'Löschen' : 'Elimina';
-
+                // Pulsantiera fluttuante (Porta, Dividi, Elimina)
+                const midControl = document.createElement('div');
+                midControl.id = `wall-ctrl-${wallIndex}`;
+                midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90 transition-opacity duration-200';
+                
                 midControl.innerHTML = `
-                    <button class="split-btn bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700">${splitLabel}</button>
-                    <button class="delete-btn bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700"><i class="fa-solid fa-xmark"></i></button>
+                    <button class="toggle-btn bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-amber-600" title="Cambia in Porta/Muro"><i class="fa-solid fa-door-open"></i></button>
+                    <button class="split-btn bg-indigo-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-indigo-700" title="Dividi Muro"><i class="fa-solid fa-scissors"></i></button>
+                    <button class="delete-btn bg-rose-600 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-rose-700" title="Elimina"><i class="fa-solid fa-xmark"></i></button>
                 `;
                 
+                midControl.querySelector('.toggle-btn').onclick = (e) => {
+                    e.stopPropagation();
+                    wall.type = wall.type === 'wall' ? 'door' : 'wall';
+                    if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+                    renderTables(onTableClick);
+                };
                 midControl.querySelector('.split-btn').onclick = (e) => {
                     e.stopPropagation();
                     splitWall(roomObj, wallIndex);
@@ -71,28 +79,28 @@ export function renderTables(onTableClick) {
                 };
                 wallDiv.appendChild(midControl);
 
-                wallDiv.onclick = (e) => {
-                    if(e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-                    wall.type = wall.type === 'wall' ? 'door' : 'wall';
-                    saveRoomsToLocal();
-                    renderTables(onTableClick);
-                };
-
+                // Maniglia 1 (Punto di partenza)
                 const h1 = document.createElement('div');
-                h1.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
+                h1.id = `wall-h1-${wallIndex}`;
+                h1.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
                 h1.style.left = `${wall.x1}px`;
                 h1.style.top = `${wall.y1}px`;
                 h1.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
-                enableWallDrag(h1, wall, 'start', onTableClick);
+                enableWallEndpointDrag(h1, wall, 'start', wallIndex, roomObj, onTableClick);
                 canvas.appendChild(h1);
 
+                // Maniglia 2 (Punto di arrivo)
                 const h2 = document.createElement('div');
-                h2.className = 'absolute w-4 h-4 bg-indigo-600 rounded-full -translate-x-2 -translate-y-2 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
+                h2.id = `wall-h2-${wallIndex}`;
+                h2.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
                 h2.style.left = `${wall.x2}px`;
                 h2.style.top = `${wall.y2}px`;
                 h2.innerHTML = '<i class="fa-solid fa-arrows-up-down-left-right text-[7px]"></i>';
-                enableWallDrag(h2, wall, 'end', onTableClick);
+                enableWallEndpointDrag(h2, wall, 'end', wallIndex, roomObj, onTableClick);
                 canvas.appendChild(h2);
+
+                // Attiva il drag per trascinare l'INTERO muro
+                enableFullWallDrag(wallDiv, wall, wallIndex, onTableClick);
             }
 
             canvas.appendChild(wallDiv);
@@ -217,17 +225,13 @@ function splitWall(roomObj, index) {
     w.y2 = midY;
 
     roomObj.walls.splice(index + 1, 0, newWallSegment);
-    saveRoomsToLocal();
+    if (window.saveRoomsToLocal) window.saveRoomsToLocal();
     renderTables();
 }
 
 function removeWall(roomObj, index) {
-    if (roomObj.walls.length <= 3) {
-        alert("Una stanza deve avere almeno 3 segmenti di muro.");
-        return;
-    }
     roomObj.walls.splice(index, 1);
-    saveRoomsToLocal();
+    if (window.saveRoomsToLocal) window.saveRoomsToLocal();
     renderTables();
 }
 
@@ -251,7 +255,9 @@ function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
     }
     return { x: snappedX, y: snappedY };
 }
-function enableWallDrag(handleEl, wallObj, pointType, callback) {
+
+// DRAG ENDPOINTS (Modifica lunghezza e angolo in modo fluido)
+function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj, callback) {
     let isDragging = false;
     handleEl.style.touchAction = 'none';
 
@@ -259,6 +265,8 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
         if (!state.isEditMode) return;
         isDragging = true;
         handleEl.setPointerCapture(e.pointerId);
+        const ctrl = document.getElementById(`wall-ctrl-${wallIndex}`);
+        if(ctrl) ctrl.style.opacity = '0'; // Nasconde i tastini durante il drag
         e.stopPropagation();
     });
 
@@ -271,7 +279,6 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
         let rawX = Math.max(0, Math.min(e.clientX - rect.left, canvas.clientWidth));
         let rawY = Math.max(0, Math.min(e.clientY - rect.top, canvas.clientHeight));
 
-        const roomObj = state.rooms.find(r => r.id === state.currentRoomId);
         const snapped = applyMagneticSnap(rawX, rawY, roomObj);
 
         if (pointType === 'start') {
@@ -281,17 +288,86 @@ function enableWallDrag(handleEl, wallObj, pointType, callback) {
             wallObj.x2 = snapped.x;
             wallObj.y2 = snapped.y;
         }
-        renderTables(callback);
+
+        // Aggiorna l'HTML direttamente (zero lag)
+        const dx = wallObj.x2 - wallObj.x1;
+        const dy = wallObj.y2 - wallObj.y1;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+        const wallDiv = document.getElementById(`wall-${wallIndex}`);
+        if (wallDiv) {
+            wallDiv.style.left = `${wallObj.x1}px`;
+            wallDiv.style.top = `${wallObj.y1}px`;
+            wallDiv.style.width = `${length}px`;
+            wallDiv.style.transform = `rotate(${angle}deg)`;
+        }
+        handleEl.style.left = `${snapped.x}px`;
+        handleEl.style.top = `${snapped.y}px`;
     });
 
     document.addEventListener('pointerup', () => {
         if (isDragging) {
             isDragging = false;
-            saveRoomsToLocal(); // Salva correttamente nel localStorage quando rilasci il muro
+            if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+            renderTables(callback);
         }
     });
 }
 
+// FULL DRAG (Trascina l'intero muro liberamente)
+function enableFullWallDrag(element, wallObj, wallIndex, callback) {
+    let isDragging = false;
+    let startX, startY;
+    let initX1, initY1, initX2, initY2;
+    element.style.touchAction = 'none';
+
+    element.addEventListener('pointerdown', (e) => {
+        if (!state.isEditMode || e.target.closest('button')) return;
+        isDragging = true;
+        element.setPointerCapture(e.pointerId);
+        startX = e.clientX;
+        startY = e.clientY;
+        initX1 = wallObj.x1;
+        initY1 = wallObj.y1;
+        initX2 = wallObj.x2;
+        initY2 = wallObj.y2;
+        element.style.zIndex = 1000;
+        const ctrl = document.getElementById(`wall-ctrl-${wallIndex}`);
+        if(ctrl) ctrl.style.opacity = '0';
+        e.stopPropagation();
+    });
+
+    document.addEventListener('pointermove', (e) => {
+        if (!isDragging || !state.isEditMode) return;
+        let dx = e.clientX - startX;
+        let dy = e.clientY - startY;
+
+        wallObj.x1 = initX1 + dx;
+        wallObj.y1 = initY1 + dy;
+        wallObj.x2 = initX2 + dx;
+        wallObj.y2 = initY2 + dy;
+
+        element.style.left = `${wallObj.x1}px`;
+        element.style.top = `${wallObj.y1}px`;
+
+        const h1 = document.getElementById(`wall-h1-${wallIndex}`);
+        const h2 = document.getElementById(`wall-h2-${wallIndex}`);
+        if(h1) { h1.style.left = `${wallObj.x1}px`; h1.style.top = `${wallObj.y1}px`; }
+        if(h2) { h2.style.left = `${wallObj.x2}px`; h2.style.top = `${wallObj.y2}px`; }
+    });
+
+    document.addEventListener('pointerup', () => {
+        if (isDragging) {
+            isDragging = false;
+            element.style.zIndex = '';
+            if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+            renderTables(callback);
+        }
+    });
+}
+
+// LOGICA TRASCINAMENTO TAVOLI (Rimasta inalterata)
 function enableTableDrag(element, tableId, width, height) {
     let isDragging = false;
     let startX, startY;
@@ -404,11 +480,16 @@ async function deleteTableAction(tableId) {
     await state.supabaseClient.from('bookings').delete().eq('table_id', tableId);
     await state.supabaseClient.from('tables').delete().eq('id', tableId);
     document.getElementById('booking-modal').classList.add('hidden');
-    // Ricaricamento gestito da app.js
 }
-function saveRoomsToLocal() {
+
+// Fallback di backup se la funzione globale dovesse mancare
+export function saveRoomsToLocal() {
+    if (window.saveRoomsToLocal) {
+        window.saveRoomsToLocal();
+        return;
+    }
     const restId = state.currentRestaurantId || 'default';
     const roomsData = JSON.stringify(state.rooms);
     localStorage.setItem('restabook_rooms_' + restId, roomsData);
-    localStorage.setItem('restabook_rooms_global', roomsData); // Fallback di sicurezza
+    localStorage.setItem('restabook_rooms_global', roomsData);
 }
