@@ -292,11 +292,40 @@ function toggleEditMode() {
     renderTables(openTableModal);
 }
 
-function addCustomWall() {
+async function saveRoomsToLocal() {
+    if (state.currentRestaurantId) {
+        const roomsData = JSON.stringify(state.rooms);
+        localStorage.setItem('rooms_' + state.currentRestaurantId, roomsData);
+        localStorage.setItem('restabook_rooms_global', roomsData);
+
+        // Salvataggio di backup/sincronizzazione su Supabase (se la tabella o il campo lo supporta)
+        if (state.supabaseClient && state.currentRestaurantId !== 'tutti') {
+            try {
+                // Salviamo la configurazione delle stanze/muri come preferenza o metadato nel database se necessario
+                await state.supabaseClient
+                    .from('restaurants')
+                    .update({ rooms_config: state.rooms })
+                    .eq('id', state.currentRestaurantId);
+            } catch (err) {
+                console.error("Errore salvataggio stanze su Supabase:", err);
+            }
+        }
+    }
+}
+
+async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) return;
+    
+    // Inizializza l'array walls se non esiste
+    if (!room.walls) {
+        room.walls = [];
+    }
+
     room.walls.push({ x1: 100, y1: 150, x2: 300, y2: 150, type: 'wall' });
-    saveRoomsToLocal();
+    
+    // Salva sia in locale che sul database
+    await saveRoomsToLocal();
     renderTables(openTableModal);
 }
 
