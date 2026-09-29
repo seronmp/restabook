@@ -1,10 +1,18 @@
 import { state, translations } from './config.js';
 import { formatDateKey } from './calendar.js';
 
+import { state, translations } from './config.js';
+import { formatDateKey } from './calendar.js';
+
 export function renderRooms(onRoomChange) {
     const container = document.getElementById('rooms-tabs-container');
     if (!container) return;
     container.innerHTML = '';
+
+    // Se siamo nella vista Admin Globale, non mostriamo i tab delle stanze
+    if (state.currentRestaurantId === 'tutti') {
+        return; 
+    }
 
     state.rooms.forEach(room => {
         const isActive = room.id === state.currentRoomId;
@@ -22,10 +30,92 @@ export function renderRooms(onRoomChange) {
 
 export function renderTables(onTableClick) {
     const canvas = document.getElementById('floor-canvas');
+    if (!canvas) return;
     canvas.innerHTML = '';
+
+    // ==========================================
+    // VISTA ADMIN GLOBALE (DASHBOARD RISTORANTI)
+    // ==========================================
+    if (state.currentRestaurantId === 'tutti') {
+        const allRests = state.allRestaurants || [];
+        
+        let html = `
+        <div class="absolute inset-0 z-50 bg-gray-50 overflow-y-auto p-6 rounded-xl">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-800"><i class="fa-solid fa-chart-pie text-indigo-600 mr-2"></i> Dashboard Globale</h2>
+                        <p class="text-sm text-gray-500 mt-1">Panoramica e gestione dei ristoranti attivi sulla piattaforma</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        `;
+
+        allRests.forEach(r => {
+            // Calcola le statistiche per questo ristorante filtrando dallo stato generale
+            const rTables = state.tables.filter(t => t.restaurant_id === r.restaurant_id);
+            const totalTables = rTables.length;
+            const totalSeats = rTables.reduce((sum, t) => sum + (t.seats || 0), 0);
+            
+            html += `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition group relative overflow-hidden">
+                    <div class="h-1.5 w-full absolute top-0 left-0 bg-indigo-500 opacity-80"></div>
+                    
+                    <div class="mt-2 flex justify-between items-start mb-4">
+                        <div class="truncate pr-2">
+                            <h3 class="text-lg font-bold text-gray-800 truncate">${r.name}</h3>
+                            <p class="text-xs text-gray-500 flex items-center mt-1 truncate">
+                                <i class="fa-regular fa-envelope mr-1.5"></i> ${r.email || 'Nessuna email'}
+                            </p>
+                        </div>
+                        <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
+                            ${r.plan || 'Free'}
+                        </span>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tavoli</p>
+                                <p class="text-xl font-black text-gray-700">${totalTables}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posti Coperti</p>
+                                <p class="text-xl font-black text-gray-700">${totalSeats} <span class="text-xs text-gray-400 font-medium">/ ${r.max_capacity || '∞'}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="
+                        document.getElementById('restaurant-select').value = '${r.restaurant_id}'; 
+                        document.getElementById('restaurant-select').dispatchEvent(new Event('change'));
+                    " class="w-full bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 font-semibold py-2 rounded-lg text-xs transition-colors flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Gestisci Ristorante
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        </div>`;
+        
+        canvas.innerHTML = html;
+        return; // Fermiamo qui la funzione, non vogliamo disegnare stanze!
+    }
+
+
+    // ==========================================
+    // VISTA RISTORANTE SINGOLO (PLANIMETRIA)
+    // ==========================================
     const currentDateStr = formatDateKey(state.currentDate);
     const timeFilter = document.getElementById('filter-time').value;
     const roomObj = state.rooms.find(r => r.id === state.currentRoomId) || state.rooms[0];
+
+    // -- DA QUI IN GIÙ LASCIA ESATTAMENTE IL CODICE CHE AVEVI PRIMA --
+    // (quello che inizia con "if (roomObj && roomObj.walls) { ...")
 
     if (roomObj && roomObj.walls) {
         roomObj.walls.forEach((wall, wallIndex) => {
@@ -52,7 +142,6 @@ export function renderTables(onTableClick) {
             if (state.isEditMode) {
                 wallDiv.classList.add('cursor-move', 'ring-2', 'ring-indigo-400');
                 
-                // Pulsantiera fluttuante (Porta, Dividi, Elimina)
                 const midControl = document.createElement('div');
                 midControl.id = `wall-ctrl-${wallIndex}`;
                 midControl.className = 'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center space-x-1 z-30 opacity-90 transition-opacity duration-200';
@@ -79,7 +168,6 @@ export function renderTables(onTableClick) {
                 };
                 wallDiv.appendChild(midControl);
 
-                // Maniglia 1 (Punto di partenza)
                 const h1 = document.createElement('div');
                 h1.id = `wall-h1-${wallIndex}`;
                 h1.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
@@ -89,7 +177,6 @@ export function renderTables(onTableClick) {
                 enableWallEndpointDrag(h1, wall, 'start', wallIndex, roomObj, onTableClick);
                 canvas.appendChild(h1);
 
-                // Maniglia 2 (Punto di arrivo)
                 const h2 = document.createElement('div');
                 h2.id = `wall-h2-${wallIndex}`;
                 h2.className = 'absolute w-5 h-5 bg-indigo-600 rounded-full -translate-x-2.5 -translate-y-2.5 cursor-pointer z-40 shadow-md flex items-center justify-center text-white text-[9px] hover:scale-110 transition';
@@ -99,13 +186,120 @@ export function renderTables(onTableClick) {
                 enableWallEndpointDrag(h2, wall, 'end', wallIndex, roomObj, onTableClick);
                 canvas.appendChild(h2);
 
-                // Attiva il drag per trascinare l'INTERO muro
                 enableFullWallDrag(wallDiv, wall, wallIndex, onTableClick);
             }
 
             canvas.appendChild(wallDiv);
         });
     }
+
+    const roomTables = state.tables.filter(t => (t.room_id || 'sala-principale') === state.currentRoomId);
+    roomTables.forEach(table => {
+        let tableBookings = state.bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
+
+        if (timeFilter !== 'all') {
+            const [fStart, fEnd] = timeFilter.split('-');
+            tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
+        }
+
+        let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
+        let badgeColor = "bg-emerald-500";
+        let statusText = translations[state.currentLang].free;
+
+        if (tableBookings.length > 0 && timeFilter === 'all') {
+            statusColor = "bg-amber-50 border-amber-300 text-amber-900";
+            badgeColor = "bg-amber-500";
+            statusText = `${tableBookings.length} ris.`;
+        } else if (tableBookings.length > 0) {
+            statusColor = "bg-rose-50 border-rose-300 text-rose-900";
+            badgeColor = "bg-rose-500";
+            statusText = translations[state.currentLang].full;
+        }
+
+        let width = table.width ?? 90;
+        let height = table.height ?? 90;
+        const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
+
+        const tableEl = document.createElement('div');
+        tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md z-20`;
+        tableEl.style.left = `${table.pos_x ?? 50}px`;
+        tableEl.style.top = `${table.pos_y ?? 50}px`;
+        tableEl.style.width = `${width}px`;
+        tableEl.style.height = `${height}px`;
+        tableEl.style.transform = `rotate(${table.rotation ?? 0}deg)`;
+
+        let editControlsHtml = '';
+        if (state.isEditMode) {
+            editControlsHtml = `
+                <button class="delete-table-btn absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+                <button class="rotate-table-btn absolute -top-2 left-1 bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-amber-600 z-30" title="Ruota 90°">
+                    <i class="fa-solid fa-rotate"></i> 90°
+                </button>
+                <div class="absolute -bottom-2 -right-2 w-4 h-4 bg-indigo-600 rounded-full cursor-se-resize z-40 shadow flex items-center justify-center text-white text-[8px]" title="Trascina per ridimensionare" id="resize-handle-${table.id}">
+                    <i class="fa-solid fa-expand text-[7px]"></i>
+                </div>
+            `;
+        }
+
+        let seatsControlHtml = state.isEditMode ? `
+            <div class="seats-control-box flex items-center justify-center space-x-1 my-auto bg-white/80 rounded px-1 py-0.5 z-30 shadow-xs">
+                <span class="text-[9px] font-bold text-gray-700">Posti:</span>
+                <input type="number" min="1" max="30" value="${table.seats}" class="table-seats-input w-8 text-center text-xs font-black bg-white border border-gray-300 rounded">
+            </div>
+        ` : `
+            <div class="text-center pointer-events-none my-auto">
+                <h3 class="text-sm font-black">${table.table_number}</h3>
+                <div class="text-[9px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
+            </div>
+        `;
+
+        tableEl.innerHTML = `
+            ${editControlsHtml}
+            <div class="flex justify-between items-start pointer-events-none">
+                <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
+                <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
+            </div>
+            ${seatsControlHtml}
+            <div class="text-[9px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
+        `;
+
+        if (state.isEditMode) {
+            tableEl.querySelector('.delete-table-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                deleteTableAction(table.id);
+            });
+            tableEl.querySelector('.rotate-table-btn')?.addEventListener('click', (e) => {
+                e.stopPropagation();
+                rotateTableAction(table.id, onTableClick);
+            });
+            tableEl.querySelector('.table-seats-input')?.addEventListener('change', async (e) => {
+                e.stopPropagation();
+                await updateTableSeatsAction(table.id, e.target.value);
+            });
+            tableEl.querySelector('.table-seats-input')?.addEventListener('click', (e) => e.stopPropagation());
+        }
+
+        tableEl.addEventListener('click', () => {
+            if (!state.isEditMode && onTableClick) onTableClick(table.id);
+        });
+
+        if (state.isEditMode) {
+            tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
+            enableTableDrag(tableEl, table.id, width, height);
+            
+            setTimeout(() => {
+                const resizeHandle = document.getElementById(`resize-handle-${table.id}`);
+                if (resizeHandle) {
+                    enableTableResize(resizeHandle, tableEl, table.id);
+                }
+            }, 0);
+        }
+
+        canvas.appendChild(tableEl);
+    });
+}
 
     const roomTables = state.tables.filter(t => (t.room_id || 'sala-principale') === state.currentRoomId);
     roomTables.forEach(table => {
