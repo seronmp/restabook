@@ -44,7 +44,7 @@ async function loadData() {
                     state.rooms = JSON.parse(savedRooms);
                     // 3. Forziamo immediatamente il salvataggio sul database per riempire quel vuoto
                     if (state.rooms.length > 0) {
-                        setTimeout(() => window.saveRoomsToLocal(), 500);
+                        setTimeout(() => saveRoomsToLocal(), 500);
                     }
                 } catch (e) {
                     console.error("Errore parsing stanze locali:", e);
@@ -578,3 +578,4 @@ function checkClientPrivacy() {
         privacyLabel.innerText = t.privacyText || "Datenschutzbestimmungen akzeptiert";
     }
 }
+window.saveRoomsToLocal = saveRoomsToLocal;
