@@ -56,7 +56,6 @@ async function loadData() {
             console.error("Errore parsing stanze locali:", e);
         }
     }
-}
 
     try {
         let queryTables = state.supabaseClient.from('tables').select('*');
