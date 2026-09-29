@@ -124,13 +124,6 @@ async function initRestaurantSelector() {
     };
 }
 
-function saveRoomsToLocal() {
-    if (state.currentRestaurantId) {
-        const roomsData = JSON.stringify(state.rooms);
-        localStorage.setItem('rooms_' + state.currentRestaurantId, roomsData);
-        localStorage.setItem('restabook_rooms_global', roomsData);
-    }
-}
 
 // Gestione del tasto Logout e Nuovo Ristorante nella testata
 function setupGlobalHeaderButtons() {
