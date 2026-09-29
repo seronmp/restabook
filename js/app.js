@@ -291,10 +291,12 @@ function saveRoomsToLocal() {
     
     const roomsData = JSON.stringify(state.rooms);
     
-    // Salvataggio locale persistente per ristorante
+    // Salvataggio sincronizzato con tutte le possibili chiavi di lettura
+    localStorage.setItem('restabook_rooms_' + restId, roomsData);
     localStorage.setItem('rooms_' + restId, roomsData);
     localStorage.setItem('restabook_rooms_global', roomsData);
-    console.log("Stanze e muri salvati correttamente in locale per il ristorante:", restId);
+    
+    console.log("Stanze e muri salvati correttamente per il ristorante:", restId);
 }
 
     // Se siamo collegati a Supabase e c'è un ristorante valido, salviamo sul database
