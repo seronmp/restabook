@@ -321,21 +321,18 @@ async function saveRoomsToLocal() {
     // 2. Salvataggio su Supabase
     if (state.supabaseClient && restId && restId !== 'tutti') {
         try {
-            // ATTENZIONE: Se in loadData hai cambiato 'id' in 'restaurant_id', cambialo anche qui sotto!
-            const nomeColonnaID = 'id'; // <--- Modifica questo se la tua colonna si chiama in un altro modo
-
             const { data, error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
-                .eq(restaurant_id, restId)
-                .select(); // Forziamo Supabase a restituire il record per capire se ha davvero salvato
+                .eq('id', restId) // <--- ASSICURATI CHE CI SIANO GLI APICI INTORNO AL NOME!
+                .select();
 
             if (error) {
                 console.error("Errore nel salvataggio su Supabase:", error.message);
                 alert("Errore nel salvataggio: " + error.message);
             } else if (!data || data.length === 0) {
                 console.warn("Nessuna riga modificata! Il database sta bloccando il salvataggio.");
-                alert("Salvataggio fallito: Permessi negati. Controlla le policy RLS su Supabase per la tabella 'restaurants'.");
+                alert("Salvataggio fallito: Permessi negati. Controlla le policy RLS su Supabase.");
             } else {
                 console.log("Stanze e muri salvati con SUCCESSO su Supabase per:", restId);
             }
