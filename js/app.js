@@ -46,8 +46,6 @@ async function loadData() {
     }
 }
 
-    if (!state.currentRestaurantId || !state.supabaseClient) return;
-
     try {
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
