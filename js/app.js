@@ -30,7 +30,7 @@ async function loadData() {
         const { data, error } = await state.supabaseClient
             .from('restaurants')
             .select('rooms_config')
-            .eq('id', restId)
+            .eq('restaurant_id', restId)
             .single();
             
         if (error) {
