@@ -316,7 +316,6 @@ function saveRoomsToLocal() {
             console.error("Errore di rete durante il salvataggio dei muri:", err);
         }
     }
-}
 
 async function addCustomWall() {
     const room = state.rooms.find(r => r.id === state.currentRoomId);
