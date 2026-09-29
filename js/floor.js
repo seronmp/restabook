@@ -29,19 +29,127 @@ export function renderTables(onTableClick) {
     const canvas = document.getElementById('floor-canvas');
     if (!canvas) return;
 
-    // --- 📱 FIX ADATTIVO TABLET E MOBILE ---
-    // 1. Imposta dimensioni minime al canvas per evitare che i muri si schiaccino sui piccoli schermi
+    // --- TROVIAMO GLI ELEMENTI DA NASCONDERE ---
+    const floorTitle = document.getElementById('floor-title');
+    const filterTime = document.getElementById('filter-time');
+    
+    // Cerchiamo la riga "padre" che contiene sia il titolo che il filtro
+    const headerRow = floorTitle ? floorTitle.closest('.flex.justify-between') || floorTitle.parentElement.parentElement : null;
+    const titleBlock = floorTitle ? floorTitle.parentElement : null;
+    const filterBlock = filterTime ? filterTime.parentElement : null;
+
+    // ==========================================
+    // VISTA ADMIN GLOBALE (DASHBOARD RISTORANTI)
+    // ==========================================
+    if (state.currentRestaurantId === 'tutti') {
+        
+        // 1. NASCONDI IL TITOLO E IL FILTRO "FASCIA"
+        if (headerRow && headerRow.classList.contains('justify-between')) {
+            headerRow.style.display = 'none';
+        } else {
+            if (titleBlock) titleBlock.style.display = 'none';
+            if (filterBlock) filterBlock.style.display = 'none';
+        }
+
+        // 2. Disabilita lo scroll "bloccato" del tablet per la dashboard
+        canvas.style.minWidth = '100%';
+        canvas.style.minHeight = 'auto';
+        canvas.style.touchAction = 'auto';
+        if (canvas.parentElement) canvas.parentElement.style.overflow = 'visible';
+
+        canvas.innerHTML = '';
+        
+        const allRests = state.allRestaurants || [];
+        
+        let html = `
+        <div class="relative z-50 bg-gray-50 overflow-y-auto rounded-xl w-full">
+            <div class="max-w-6xl mx-auto py-2">
+                <div class="flex items-center justify-between mb-6 border-b border-gray-200 pb-4">
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-800"><i class="fa-solid fa-chart-pie text-indigo-600 mr-2"></i> Dashboard Globale</h2>
+                        <p class="text-sm text-gray-500 mt-1">Panoramica e gestione dei ristoranti attivi sulla piattaforma</p>
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        `;
+
+        allRests.forEach(r => {
+            const rTables = state.tables.filter(t => t.restaurant_id === r.restaurant_id);
+            const totalTables = rTables.length;
+            const totalSeats = rTables.reduce((sum, t) => sum + (t.seats || 0), 0);
+            
+            html += `
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition group relative overflow-hidden">
+                    <div class="h-1.5 w-full absolute top-0 left-0 bg-indigo-500 opacity-80"></div>
+                    
+                    <div class="mt-2 flex justify-between items-start mb-4">
+                        <div class="truncate pr-2">
+                            <h3 class="text-lg font-bold text-gray-800 truncate">${r.name}</h3>
+                            <p class="text-xs text-gray-500 flex items-center mt-1 truncate">
+                                <i class="fa-regular fa-envelope mr-1.5"></i> ${r.email || 'Nessuna email'}
+                            </p>
+                        </div>
+                        <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
+                            ${r.plan || 'Free'}
+                        </span>
+                    </div>
+                    
+                    <div class="bg-gray-50 rounded-xl p-4 mb-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tavoli</p>
+                                <p class="text-xl font-black text-gray-700">${totalTables}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posti Coperti</p>
+                                <p class="text-xl font-black text-gray-700">${totalSeats} <span class="text-xs text-gray-400 font-medium">/ ${r.max_capacity || '∞'}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onclick="
+                        document.getElementById('restaurant-select').value = '${r.restaurant_id}'; 
+                        document.getElementById('restaurant-select').dispatchEvent(new Event('change'));
+                    " class="w-full bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 font-semibold py-2 rounded-lg text-xs transition-colors flex items-center justify-center">
+                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Gestisci Ristorante
+                    </button>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+            </div>
+        </div>`;
+        
+        canvas.innerHTML = html;
+        return; 
+    }
+
+    // ==========================================
+    // VISTA RISTORANTE SINGOLO (PLANIMETRIA)
+    // ==========================================
+
+    // 1. RIPRISTINA IL TITOLO E IL FILTRO "FASCIA"
+    if (headerRow && headerRow.classList.contains('justify-between')) {
+        headerRow.style.display = 'flex';
+    } else {
+        if (titleBlock) titleBlock.style.display = '';
+        if (filterBlock) filterBlock.style.display = '';
+    }
+
+    // 2. Ripristina il setup per scorrere bene la planimetria col tablet
+    const currentDateStr = formatDateKey(state.currentDate);
+    const timeFilter = document.getElementById('filter-time').value;
+    const roomObj = state.rooms.find(r => r.id === state.currentRoomId) || state.rooms[0];
+
     canvas.style.minWidth = '1000px'; 
     canvas.style.minHeight = '700px';
-    
-    // 2. Permette al dito di scorrere (pan) la visuale SOLO quando tocca lo sfondo vuoto
     canvas.style.touchAction = 'pan-x pan-y'; 
-
-    // 3. Applica lo scorrimento fluido nativo (fondamentale per iPad/Android) al contenitore
     if (canvas.parentElement) {
         canvas.parentElement.style.overflow = 'auto';
         canvas.parentElement.style.WebkitOverflowScrolling = 'touch';
-        // Evita che lo scroll "rimbalzi" aggiornando l'intera pagina del browser
         canvas.parentElement.style.overscrollBehavior = 'contain';
     }
     // ----------------------------------------
