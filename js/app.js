@@ -5,9 +5,9 @@ import { renderRooms, renderTables } from './floor.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initAuth(async () => {
-        await loadData();
+        await initRestaurantSelector(); // <-- SPOSTATO SOPRA: Carica prima la lista
+        await loadData();               // <-- SPOSTATO SOTTO: Disegna lo schermo
         setupEventListeners();
-        await initRestaurantSelector();
         setupGlobalHeaderButtons();
     });
 });
