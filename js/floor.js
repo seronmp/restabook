@@ -31,10 +31,30 @@ export function renderRooms(onRoomChange) {
 export function renderTables(onTableClick) {
     const canvas = document.getElementById('floor-canvas');
     if (!canvas) return;
+
+    // --- 📱 FIX ADATTIVO TABLET E MOBILE ---
+    // 1. Imposta dimensioni minime al canvas per evitare che i muri si schiaccino sui piccoli schermi
+    canvas.style.minWidth = '1000px'; 
+    canvas.style.minHeight = '700px';
+    
+    // 2. Permette al dito di scorrere (pan) la visuale SOLO quando tocca lo sfondo vuoto
+    canvas.style.touchAction = 'pan-x pan-y'; 
+
+    // 3. Applica lo scorrimento fluido nativo (fondamentale per iPad/Android) al contenitore
+    if (canvas.parentElement) {
+        canvas.parentElement.style.overflow = 'auto';
+        canvas.parentElement.style.WebkitOverflowScrolling = 'touch';
+        // Evita che lo scroll "rimbalzi" aggiornando l'intera pagina del browser
+        canvas.parentElement.style.overscrollBehavior = 'contain';
+    }
+    // ----------------------------------------
+
     canvas.innerHTML = '';
 
     // ==========================================
     // VISTA ADMIN GLOBALE (DASHBOARD RISTORANTI)
+    // ==========================================
+    // ... [IL RESTO DEL TUO CODICE DA QUI IN POI RIMANE IDENTICO] ...
     // ==========================================
     if (state.currentRestaurantId === 'tutti') {
         const allRests = state.allRestaurants || [];
