@@ -399,8 +399,9 @@ async function saveBooking(e) {
         return;
     }
 
-    // 2. Invia la notifica WhatsApp tramite la Edge Function
+    // 2. Invia la notifica WhatsApp tramite la Edge Function e registra il log
     if (phone && phone.trim() !== "") {
+        let logStatus = "success";
         try {
             await state.supabaseClient.functions.invoke('send-whatsapp', {
                 body: { 
@@ -414,7 +415,25 @@ async function saveBooking(e) {
             });
             console.log("Richiesta WhatsApp inviata con successo per il numero:", phone);
         } catch (waError) {
+            logStatus = "error: " + waError.message;
             console.error("Errore durante l'invio del messaggio WhatsApp:", waError);
+        }
+
+        // Salva il log dello stato WhatsApp nella tabella Supabase
+        try {
+            await state.supabaseClient
+                .from('whatsapp_logs')
+                .insert([{
+                    restaurant_id: state.currentRestaurantId,
+                    phone: phone,
+                    client_name: name,
+                    date: dateStr,
+                    time: startTime,
+                    guests: guests,
+                    status: logStatus
+                }]);
+        } catch (dbErr) {
+            console.error("Impossibile salvare il log su Supabase:", dbErr);
         }
     }
 
