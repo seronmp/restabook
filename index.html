@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SmartTable - Pianta Dinamica & Booking</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,7 +14,7 @@
     <link rel="stylesheet" href="./css/style.css">
 </head>
 <body class="bg-gray-100 font-sans text-gray-800 flex flex-col min-h-screen">
-   
+    
     <!-- Login Section -->
     <div id="login-container" class="flex flex-col items-center justify-center h-screen bg-gray-100">
         <form id="login-form" class="p-8 bg-white rounded-xl shadow-md w-96 border border-gray-100">
@@ -27,10 +27,10 @@
     
     <!-- App Container -->
     <div id="app-container" style="display: none;" class="flex-grow">
-        <header class="bg-white shadow-sm px-6 py-4 flex justify-between items-center z-20 relative">
+        <header class="bg-white shadow-sm px-4 md:px-6 py-4 flex flex-wrap justify-between items-center z-20 relative gap-4">
             <div class="flex items-center space-x-4">
                 <i class="fa-solid fa-utensils text-indigo-600 text-2xl"></i>
-                <h1 id="app-title" class="text-xl font-bold text-gray-900">SmartTable Manager</h1>
+                <h1 id="app-title" class="text-xl font-bold text-gray-900 hidden sm:block">SmartTable Manager</h1>
                 
                 <!-- SELETTORE / SWITCH DEI RISTORANTI AGGIUNTO QUI -->
                 <select id="restaurant-select" class="bg-gray-50 border border-gray-300 text-gray-700 text-xs rounded-lg focus:ring-indigo-500 focus:border-indigo-500 p-2 shadow-sm font-medium">
@@ -38,21 +38,22 @@
                 </select>
             </div>
             
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-3 md:space-x-4">
                 <button id="btn-toggle-edit" class="px-3 py-1.5 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center space-x-1.5">
                     <i class="fa-solid fa-arrows-up-down-left-right"></i>
-                    <span id="txt-edit-mode">Modifica Sala & Muri / Wände bearbeiten</span>
+                    <span id="txt-edit-mode" class="hidden sm:inline">Modifica Sala & Muri</span>
                 </button>
                 <div class="flex bg-gray-200 rounded-lg p-1">
                     <button id="btn-it" class="px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm">IT</button>
                     <button id="btn-de" class="px-3 py-1 rounded-md text-sm font-medium text-gray-600">DE</button>
                 </div>
-                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden sm:block"></div>
+                <div id="current-date-display" class="text-sm font-semibold text-gray-600 hidden md:block"></div>
             </div>
         </header>
 
-        <main class="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div class="space-y-6 lg:col-span-1">
+        <!-- Modificato lg:grid-cols-4 in xl:grid-cols-4 per favorire i tablet -->
+        <main class="max-w-[1400px] mx-auto p-4 md:p-6 grid grid-cols-1 xl:grid-cols-4 gap-6">
+            <div class="space-y-6 xl:col-span-1">
                 <div class="bg-white p-5 rounded-xl shadow-sm">
                     <div class="flex justify-between items-center mb-4">
                         <h2 id="calendar-title" class="font-bold text-lg text-gray-800">Calendario</h2>
@@ -68,24 +69,24 @@
                     <div id="calendar-days" class="grid grid-cols-7 gap-1 text-center text-sm"></div>
                 </div>
 
-                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2">
-                    <div class="font-semibold text-gray-700 mb-1" id="legend-title">Legenda Tavoli:</div>
+                <div class="bg-white p-4 rounded-xl shadow-sm text-xs space-y-2 flex flex-row xl:flex-col justify-around xl:justify-start gap-2">
+                    <div class="font-semibold text-gray-700 mb-1 xl:mb-2 w-full text-center xl:text-left" id="legend-title">Legenda Tavoli:</div>
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 bg-emerald-500 rounded-full inline-block"></span>
-                        <span id="leg-free">Libero / Frei</span>
+                        <span id="leg-free" class="hidden sm:inline">Libero / Frei</span>
                     </div>
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 bg-amber-500 rounded-full inline-block"></span>
-                        <span id="leg-partial">Parziale / Teilweise</span>
+                        <span id="leg-partial" class="hidden sm:inline">Parziale / Teilweise</span>
                     </div>
                     <div class="flex items-center space-x-2">
                         <span class="w-3 h-3 bg-rose-500 rounded-full inline-block"></span>
-                        <span id="leg-full">Completo / Voll</span>
+                        <span id="leg-full" class="hidden sm:inline">Completo / Voll</span>
                     </div>
                 </div>
             </div>
 
-            <div class="lg:col-span-3 space-y-6">
+            <div class="xl:col-span-3 space-y-6">
                 <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-xl shadow-sm">
                     <div id="rooms-tabs-container" class="flex flex-wrap gap-2"></div>
                     <div class="flex items-center space-x-2">
@@ -98,13 +99,14 @@
                     </div>
                 </div>
 
-                <div class="bg-white p-5 rounded-xl shadow-sm relative">
-                    <div class="flex flex-col lg:flex-row gap-4 p-4 h-screen">
+                <div class="bg-white p-4 md:p-5 rounded-xl shadow-sm relative w-full">
+                    <!-- Intestazione con titolo e filtri corretta per non debordare -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                         <div>
                             <h2 id="floor-title" class="font-bold text-lg text-gray-800">Pianta Interattiva & Muri Dinamici</h2>
                             <p id="floor-subtitle" class="text-xs text-gray-500">Ridimensiona, ruota, unisci tavoli o modifica i posti direttamente in modalità modifica.</p>
                         </div>
-                        <div class="flex items-center space-x-3 w-full sm:w-auto justify-between">
+                        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
                             <div class="flex items-center space-x-2">
                                 <label id="lbl-time-filter" for="filter-time" class="text-xs font-medium text-gray-600">Fascia:</label>
                                 <select id="filter-time" class="border border-gray-300 rounded-lg text-xs p-1.5 bg-gray-50">
@@ -119,13 +121,17 @@
                             </button>
                         </div>
                     </div>
-                    <div id="floor-canvas" class="relative w-full h-[580px] bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl overflow-hidden shadow-inner"></div>
+                    
+                    <!-- Contenitore Scrollabile per la Pianta (FONDAMENTALE PER TABLET) -->
+                    <div class="w-full overflow-x-auto overflow-y-auto overscroll-contain rounded-2xl touch-pan-x touch-pan-y" style="-webkit-overflow-scrolling: touch;">
+                        <div id="floor-canvas" class="relative bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl shadow-inner min-w-[1000px] min-h-[700px] overflow-hidden"></div>
+                    </div>
                 </div>
             </div>
         </main>
 
-        <main class="max-w-7xl mx-auto px-4 md:px-6 w-full">
-            <div class="bg-white p-5 rounded-xl shadow-sm mt-6 mb-12">
+        <main class="max-w-[1400px] mx-auto px-4 md:px-6 w-full">
+            <div class="bg-white p-5 rounded-xl shadow-sm mt-2 mb-12">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
                     <div>
                         <h3 id="summary-box-title" class="font-bold text-base text-gray-800">Riepilogo Prenotazioni del Giorno</h3>
@@ -140,7 +146,7 @@
                     </div>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse text-xs">
+                    <table class="w-full text-left border-collapse text-xs min-w-[600px]">
                         <thead>
                             <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
                                 <th class="py-2 px-3 font-semibold" id="th-time">Orario</th>
@@ -160,13 +166,13 @@
     
     <!-- Modali (Prenotazione, Tavolo, Sala) -->
     <div id="booking-modal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl relative max-h-[90vh] overflow-y-auto">
             <button id="close-booking-modal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><i class="fa-solid fa-xmark text-lg"></i></button>
             <h3 id="modal-table-title" class="text-lg font-bold text-gray-900 mb-1">Tavolo 1</h3>
             <p id="modal-table-info" class="text-xs text-gray-500 mb-3">Posti: 4</p>
             <div id="modal-rotate-container"></div>
             <div class="mb-4">
-                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni attierne oggi:</h4>
+                <h4 id="modal-existing-title" class="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">Prenotazioni odierne:</h4>
                 <div id="modal-bookings-list" class="space-y-2 max-h-32 overflow-y-auto pr-1"></div>
             </div>
             <hr class="my-4 border-gray-100">
@@ -200,7 +206,7 @@
                 <div class="flex items-start space-x-2 my-2" id="privacy-container">
                     <input type="checkbox" id="privacy-consent" required class="mt-1 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
                     <label for="privacy-consent" class="text-[11px] text-gray-500 leading-tight" id="privacy-label-text">
-                        Ho letto e accetto l'Informativa sulla Privacy e acconsento al trattamento dei miei dati. *
+                        Ho letto e accetto l'<a href="#" class="text-indigo-600 underline font-semibold">Informativa sulla Privacy di Seron srl</a> e acconsento al trattamento dei dati. *
                     </label>
                 </div>
                 <button type="submit" id="btn-save" class="w-full bg-indigo-600 text-white font-medium py-2 rounded-lg hover:bg-indigo-700 transition">Salva Prenotazione / Speichern</button>
@@ -247,8 +253,12 @@
         </div>
     </div>
 
-    <!-- Footer generale con collegamenti Iubenda -->
+    <!-- Footer generale con collegamenti Privacy Seron / Iubenda -->
     <footer class="text-center py-6 text-xs text-gray-500 space-x-4 bg-white border-t border-gray-200 mt-auto">
+        <span>&copy; 2026 Seron S.r.l. - Tutti i diritti riservati</span>
+        <span>|</span>
+        <a href="#" class="font-medium hover:text-gray-800 transition" title="Privacy Policy di Seron srl">Privacy Policy Seron</a>
+        <span>|</span>
         <a href="https://www.iubenda.com/privacy-policy/88343578" class="iubenda-black iubenda-noiframe iubenda-embed" title="Datenschutzerklärung ">Datenschutzerklärung</a>
         <script type="text/javascript">(function (w,d) {var loader = function () {var s = d.createElement("script"), tag = d.getElementsByTagName("script")[0]; s.src="https://cdn.iubenda.com/iubenda.js"; tag.parentNode.insertBefore(s,tag);}; if(w.addEventListener){w.addEventListener("load", loader, false);}else if(w.attachEvent){w.attachEvent("onload", loader);}else{w.onload = loader;}})(window, document);</script> 
         <span>|</span>
