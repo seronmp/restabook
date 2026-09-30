@@ -39,7 +39,6 @@ export function renderTables(onTableClick) {
     // VISTA ADMIN GLOBALE (DASHBOARD RISTORANTI)
     // ==========================================
     if (state.currentRestaurantId === 'tutti') {
-        
         if (headerRow && headerRow.classList.contains('justify-between')) {
             headerRow.style.display = 'none';
         } else {
@@ -65,7 +64,6 @@ export function renderTables(onTableClick) {
                         <p class="text-sm text-gray-500 mt-1">Panoramica e gestione dei ristoranti attivi sulla piattaforma</p>
                     </div>
                 </div>
-                
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         `;
 
@@ -77,7 +75,6 @@ export function renderTables(onTableClick) {
             html += `
                 <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition group relative overflow-hidden">
                     <div class="h-1.5 w-full absolute top-0 left-0 bg-indigo-500 opacity-80"></div>
-                    
                     <div class="mt-2 flex justify-between items-start mb-4">
                         <div class="truncate pr-2">
                             <h3 class="text-lg font-bold text-gray-800 truncate">${r.name}</h3>
@@ -89,7 +86,6 @@ export function renderTables(onTableClick) {
                             ${r.plan || 'Free'}
                         </span>
                     </div>
-                    
                     <div class="bg-gray-50 rounded-xl p-4 mb-4">
                         <div class="grid grid-cols-2 gap-4">
                             <div>
@@ -102,7 +98,6 @@ export function renderTables(onTableClick) {
                             </div>
                         </div>
                     </div>
-                    
                     <button onclick="
                         document.getElementById('restaurant-select').value = '${r.restaurant_id}'; 
                         document.getElementById('restaurant-select').dispatchEvent(new Event('change'));
@@ -113,15 +108,10 @@ export function renderTables(onTableClick) {
             `;
         });
 
-        html += `
-                </div>
-            </div>
-        </div>`;
-        
+        html += `</div></div></div>`;
         canvas.innerHTML = html;
         return; 
     }
-
 
     // ==========================================
     // VISTA RISTORANTE SINGOLO (PLANIMETRIA)
