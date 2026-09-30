@@ -414,6 +414,15 @@ function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj
     document.addEventListener('pointerup', () => {
         if (isDragging) {
             isDragging = false;
+            
+            // --- FIX: BLOCCO CONFINI MURI (Endpoint) ---
+            if (window.fermaEntroIConfini) {
+                const s1 = window.fermaEntroIConfini(wallObj.x1, wallObj.y1, 1000, 800, 10, 10);
+                const s2 = window.fermaEntroIConfini(wallObj.x2, wallObj.y2, 1000, 800, 10, 10);
+                wallObj.x1 = s1.x; wallObj.y1 = s1.y;
+                wallObj.x2 = s2.x; wallObj.y2 = s2.y;
+            }
+            
             if (window.saveRoomsToLocal) window.saveRoomsToLocal();
             renderTables(callback);
         }
@@ -465,6 +474,15 @@ function enableFullWallDrag(element, wallObj, wallIndex, callback) {
         if (isDragging) {
             isDragging = false;
             element.style.zIndex = '';
+            
+            // --- FIX: BLOCCO CONFINI MURI (Interi) ---
+            if (window.fermaEntroIConfini) {
+                const s1 = window.fermaEntroIConfini(wallObj.x1, wallObj.y1, 1000, 800, 10, 10);
+                const s2 = window.fermaEntroIConfini(wallObj.x2, wallObj.y2, 1000, 800, 10, 10);
+                wallObj.x1 = s1.x; wallObj.y1 = s1.y;
+                wallObj.x2 = s2.x; wallObj.y2 = s2.y;
+            }
+
             if (window.saveRoomsToLocal) window.saveRoomsToLocal();
             renderTables(callback);
         }
@@ -502,8 +520,19 @@ function enableTableDrag(element, tableId, width, height) {
         if (isDragging) {
             isDragging = false;
             element.style.zIndex = 20;
-            const newX = parseInt(element.style.left) || 0;
-            const newY = parseInt(element.style.top) || 0;
+            
+            let newX = parseInt(element.style.left) || 0;
+            let newY = parseInt(element.style.top) || 0;
+
+            // --- FIX: BLOCCO CONFINI TAVOLI ---
+            if (window.fermaEntroIConfini) {
+                const safePos = window.fermaEntroIConfini(newX, newY, 1000, 800, width, height);
+                newX = safePos.x;
+                newY = safePos.y;
+                // Aggiorna anche a schermo se l'utente è uscito fuori
+                element.style.left = `${newX}px`;
+                element.style.top = `${newY}px`;
+            }
 
             const tableObj = state.tables.find(t => t.id === tableId);
             if (tableObj) {
