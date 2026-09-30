@@ -5,8 +5,8 @@ import { renderRooms, renderTables } from './floor.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     initAuth(async () => {
-        await initRestaurantSelector(); // <-- SPOSTATO SOPRA: Carica prima la lista
-        await loadData();               // <-- SPOSTATO SOTTO: Disegna lo schermo
+        await initRestaurantSelector(); // Carica prima la lista
+        await loadData();               // Poi disegna lo schermo
         setupEventListeners();
         setupGlobalHeaderButtons();
     });
@@ -20,16 +20,13 @@ async function loadData() {
     
     const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId');
     if (!restId || restId === 'undefined') {
-        console.log("Nessun ristorante selezionato al momento.");
         return;
     }
 
-    // Svuotiamo le stanze per evitare sovrapposizioni tra ristoranti
     state.rooms = [];
     state.currentRoomId = null;
 
     try {
-        // IL FIX È QUI: Interroghiamo la tabella restaurants SOLO se non siamo nella dashboard globale
         if (restId !== 'tutti') {
             const { data, error } = await state.supabaseClient
                 .from('restaurants')
@@ -38,7 +35,7 @@ async function loadData() {
                 .single();
                 
             if (error && error.code !== 'PGRST116') {
-                console.error("Errore caricamento Supabase (rooms_config):", error.message);
+                console.error("Errore (rooms_config):", error.message);
             } else if (data && data.rooms_config && data.rooms_config.length > 0) {
                 state.rooms = typeof data.rooms_config === 'string' ? JSON.parse(data.rooms_config) : data.rooms_config;
             } else {
@@ -46,19 +43,31 @@ async function loadData() {
                 if (savedRooms) {
                     try {
                         state.rooms = JSON.parse(savedRooms);
-                        if (state.rooms.length > 0 && typeof window.saveRoomsToLocal === 'function') {
-                            setTimeout(() => window.saveRoomsToLocal(), 500);
-                        }
-                    } catch (e) {
-                        console.error("Errore parsing stanze locali:", e);
-                    }
-                } else {
-                    state.rooms = [{ id: 'sala-principale', name: 'Sala Principale', walls: [] }];
+                    } catch (e) {}
                 }
             }
-        } else {
-            // Se siamo nella Dashboard Globale, usiamo una sala virtuale vuota senza interrogare il DB
+        }
+
+        // ==========================================
+        // FIX: CONVERSIONE AUTOMATICA VECCHI MURI
+        // ==========================================
+        if (restId === 'tutti') {
             state.rooms = [{ id: 'sala-globale', name: 'Vista Globale', walls: [] }];
+        } else if (state.rooms && state.rooms.length > 0) {
+            if (state.rooms[0].x1 !== undefined || !state.rooms[0].id) {
+                state.rooms = [{
+                    id: 'sala-principale',
+                    name: 'Sala Principale',
+                    walls: [...state.rooms]
+                }];
+                if (typeof window.saveRoomsToLocal === 'function') setTimeout(() => window.saveRoomsToLocal(), 500);
+            } else {
+                state.rooms.forEach(r => {
+                    if (!r.walls) r.walls = [];
+                });
+            }
+        } else {
+            state.rooms = [{ id: 'sala-principale', name: 'Sala Principale', walls: [] }];
         }
 
         if (state.rooms.length > 0) {
@@ -68,14 +77,9 @@ async function loadData() {
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
-        if (state.currentRestaurantId !== 'tutti') {
-            if (state.currentRestaurantName && state.currentRestaurantName !== 'Admin Globale') {
-                queryTables = queryTables.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_name.eq.${state.currentRestaurantName},restaurant_id.eq.${state.currentRestaurantName}`);
-                queryBookings = queryBookings.or(`restaurant_id.eq.${state.currentRestaurantId},restaurant_id.eq.${state.currentRestaurantName}`);
-            } else {
-                queryTables = queryTables.eq('restaurant_id', state.currentRestaurantId);
-                queryBookings = queryBookings.eq('restaurant_id', state.currentRestaurantId);
-            }
+        if (restId !== 'tutti') {
+            queryTables = queryTables.eq('restaurant_id', restId);
+            queryBookings = queryBookings.eq('restaurant_id', restId);
         }
 
         const { data: tablesData, error: tablesError } = await queryTables;
@@ -124,7 +128,9 @@ async function initRestaurantSelector() {
         console.error("Errore caricamento ristoranti:", error);
         return;
     }
+
     state.allRestaurants = restaurants || [];
+
     const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
     const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
 
@@ -342,12 +348,6 @@ async function saveRoomsToLocal() {
 
             if (error) {
                 console.error("Errore nel salvataggio su Supabase:", error.message);
-                alert("Errore nel salvataggio: " + error.message);
-            } else if (!data || data.length === 0) {
-                console.warn("Nessuna riga modificata! Il database sta bloccando il salvataggio.");
-                alert("Salvataggio fallito: Permessi negati. Controlla le policy RLS su Supabase.");
-            } else {
-                console.log("Stanze e muri salvati con SUCCESSO su Supabase per:", restId);
             }
         } catch (err) {
             console.error("Errore di rete durante il salvataggio:", err);
@@ -356,20 +356,19 @@ async function saveRoomsToLocal() {
 }
 
 async function addCustomWall() {
-    const room = state.rooms.find(r => r.id === state.currentRoomId);
+    let room = state.rooms.find(r => r.id === state.currentRoomId);
     if (!room) {
-        alert("Seleziona prima una sala valida!");
-        return;
+        room = state.rooms[0];
+        if (room) state.currentRoomId = room.id;
     }
     
-    if (!room.walls) {
-        room.walls = [];
+    if (room) {
+        if (!room.walls) room.walls = [];
+        room.walls.push({ x1: 50, y1: 50, x2: 250, y2: 50, type: 'wall' });
+        
+        if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+        refreshUI();
     }
-
-    room.walls.push({ x1: 50, y1: 50, x2: 250, y2: 50, type: 'wall' });
-    
-    await saveRoomsToLocal();
-    refreshUI();
 }
 
 function openTableModal(tableId) {
@@ -470,40 +469,6 @@ async function saveBooking(e) {
         return;
     }
 
-    if (phone && phone.trim() !== "") {
-        let logStatus = "success";
-        try {
-            await state.supabaseClient.functions.invoke('send-whatsapp', {
-                body: { 
-                    phone: phone, 
-                    name: name, 
-                    date: dateStr, 
-                    time: startTime, 
-                    guests: guests,
-                    templateName: "conferma_prenotazione" 
-                }
-            });
-        } catch (waError) {
-            logStatus = "error: " + waError.message;
-        }
-
-        try {
-            await state.supabaseClient
-                .from('whatsapp_logs')
-                .insert([{
-                    restaurant_id: state.currentRestaurantId,
-                    phone: phone,
-                    client_name: name,
-                    date: dateStr,
-                    time: startTime,
-                    guests: guests,
-                    status: logStatus
-                }]);
-        } catch (dbErr) {
-            console.error("Impossibile salvare il log su Supabase:", dbErr);
-        }
-    }
-
     await loadData();
     document.getElementById('booking-modal').classList.add('hidden');
     document.getElementById('booking-form').reset();
@@ -558,15 +523,10 @@ async function saveNewRoom(e) {
     state.rooms.push({ 
         id: newId, 
         name: roomName,
-        walls: [
-            { x1: 20, y1: 20, x2: 600, y2: 20, type: 'wall' },
-            { x1: 600, y1: 20, x2: 600, y2: 400, type: 'wall' },
-            { x1: 600, y1: 400, x2: 20, y2: 400, type: 'wall' },
-            { x1: 20, y1: 400, x2: 20, y2: 20, type: 'wall' }
-        ]
+        walls: []
     });
     state.currentRoomId = newId;
-    await saveRoomsToLocal();
+    if (window.saveRoomsToLocal) window.saveRoomsToLocal();
     document.getElementById('room-config-modal').classList.add('hidden');
     document.getElementById('new-room-name').value = '';
     refreshUI();
@@ -591,4 +551,6 @@ function checkClientPrivacy() {
         privacyLabel.innerText = t.privacyText || "Datenschutzbestimmungen akzeptiert";
     }
 }
+
+// Rendi globale la funzione di salvataggio
 window.saveRoomsToLocal = saveRoomsToLocal;
