@@ -6,7 +6,6 @@ export function renderRooms(onRoomChange) {
     if (!container) return;
     container.innerHTML = '';
 
-    // Se siamo nella vista Admin Globale, non mostriamo i tab delle stanze
     if (state.currentRestaurantId === 'tutti') {
         return; 
     }
@@ -29,11 +28,9 @@ export function renderTables(onTableClick) {
     const canvas = document.getElementById('floor-canvas');
     if (!canvas) return;
 
-    // --- TROVIAMO GLI ELEMENTI DA NASCONDERE ---
     const floorTitle = document.getElementById('floor-title');
     const filterTime = document.getElementById('filter-time');
     
-    // Cerchiamo la riga "padre" che contiene sia il titolo che il filtro
     const headerRow = floorTitle ? floorTitle.closest('.flex.justify-between') || floorTitle.parentElement.parentElement : null;
     const titleBlock = floorTitle ? floorTitle.parentElement : null;
     const filterBlock = filterTime ? filterTime.parentElement : null;
@@ -43,7 +40,6 @@ export function renderTables(onTableClick) {
     // ==========================================
     if (state.currentRestaurantId === 'tutti') {
         
-        // 1. NASCONDI IL TITOLO E IL FILTRO "FASCIA"
         if (headerRow && headerRow.classList.contains('justify-between')) {
             headerRow.style.display = 'none';
         } else {
@@ -51,7 +47,6 @@ export function renderTables(onTableClick) {
             if (filterBlock) filterBlock.style.display = 'none';
         }
 
-        // 2. Disabilita lo scroll "bloccato" del tablet per la dashboard
         canvas.style.minWidth = '100%';
         canvas.style.minHeight = 'auto';
         canvas.style.touchAction = 'auto';
@@ -127,11 +122,10 @@ export function renderTables(onTableClick) {
         return; 
     }
 
+
     // ==========================================
     // VISTA RISTORANTE SINGOLO (PLANIMETRIA)
     // ==========================================
-
-    // 1. RIPRISTINA IL TITOLO E IL FILTRO "FASCIA"
     if (headerRow && headerRow.classList.contains('justify-between')) {
         headerRow.style.display = 'flex';
     } else {
@@ -139,7 +133,6 @@ export function renderTables(onTableClick) {
         if (filterBlock) filterBlock.style.display = '';
     }
 
-    // 2. Ripristina il setup per scorrere bene la planimetria col tablet
     const currentDateStr = formatDateKey(state.currentDate);
     const timeFilter = document.getElementById('filter-time').value;
     const roomObj = state.rooms.find(r => r.id === state.currentRoomId) || state.rooms[0];
@@ -152,95 +145,8 @@ export function renderTables(onTableClick) {
         canvas.parentElement.style.WebkitOverflowScrolling = 'touch';
         canvas.parentElement.style.overscrollBehavior = 'contain';
     }
-    // ----------------------------------------
 
     canvas.innerHTML = '';
-
-    // ==========================================
-    // VISTA ADMIN GLOBALE (DASHBOARD RISTORANTI)
-    // ==========================================
-    // ... [IL RESTO DEL TUO CODICE DA QUI IN POI RIMANE IDENTICO] ...
-    // ==========================================
-    if (state.currentRestaurantId === 'tutti') {
-        const allRests = state.allRestaurants || [];
-        
-        let html = `
-        <div class="absolute inset-0 z-50 bg-gray-50 overflow-y-auto p-6 rounded-xl">
-            <div class="max-w-6xl mx-auto">
-                <div class="flex items-center justify-between mb-8 border-b border-gray-200 pb-4">
-                    <div>
-                        <h2 class="text-2xl font-black text-gray-800"><i class="fa-solid fa-chart-pie text-indigo-600 mr-2"></i> Dashboard Globale</h2>
-                        <p class="text-sm text-gray-500 mt-1">Panoramica e gestione dei ristoranti attivi sulla piattaforma</p>
-                    </div>
-                </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        `;
-
-        allRests.forEach(r => {
-            // Calcola le statistiche per questo ristorante filtrando dallo stato generale
-            const rTables = state.tables.filter(t => t.restaurant_id === r.restaurant_id);
-            const totalTables = rTables.length;
-            const totalSeats = rTables.reduce((sum, t) => sum + (t.seats || 0), 0);
-            
-            html += `
-                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition group relative overflow-hidden">
-                    <div class="h-1.5 w-full absolute top-0 left-0 bg-indigo-500 opacity-80"></div>
-                    
-                    <div class="mt-2 flex justify-between items-start mb-4">
-                        <div class="truncate pr-2">
-                            <h3 class="text-lg font-bold text-gray-800 truncate">${r.name}</h3>
-                            <p class="text-xs text-gray-500 flex items-center mt-1 truncate">
-                                <i class="fa-regular fa-envelope mr-1.5"></i> ${r.email || 'Nessuna email'}
-                            </p>
-                        </div>
-                        <span class="bg-indigo-50 text-indigo-700 border border-indigo-100 text-[10px] font-bold px-2 py-1 rounded-md whitespace-nowrap">
-                            ${r.plan || 'Free'}
-                        </span>
-                    </div>
-                    
-                    <div class="bg-gray-50 rounded-xl p-4 mb-4">
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Tavoli</p>
-                                <p class="text-xl font-black text-gray-700">${totalTables}</p>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Posti Coperti</p>
-                                <p class="text-xl font-black text-gray-700">${totalSeats} <span class="text-xs text-gray-400 font-medium">/ ${r.max_capacity || '∞'}</span></p>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button onclick="
-                        document.getElementById('restaurant-select').value = '${r.restaurant_id}'; 
-                        document.getElementById('restaurant-select').dispatchEvent(new Event('change'));
-                    " class="w-full bg-white border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 font-semibold py-2 rounded-lg text-xs transition-colors flex items-center justify-center">
-                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Gestisci Ristorante
-                    </button>
-                </div>
-            `;
-        });
-
-        html += `
-                </div>
-            </div>
-        </div>`;
-        
-        canvas.innerHTML = html;
-        return; // Fermiamo qui la funzione, non vogliamo disegnare stanze!
-    }
-
-
-    // ==========================================
-    // VISTA RISTORANTE SINGOLO (PLANIMETRIA)
-    // ==========================================
-    const currentDateStr = formatDateKey(state.currentDate);
-    const timeFilter = document.getElementById('filter-time').value;
-    const roomObj = state.rooms.find(r => r.id === state.currentRoomId) || state.rooms[0];
-
-    // -- DA QUI IN GIÙ LASCIA ESATTAMENTE IL CODICE CHE AVEVI PRIMA --
-    // (quello che inizia con "if (roomObj && roomObj.walls) { ...")
 
     if (roomObj && roomObj.walls) {
         roomObj.walls.forEach((wall, wallIndex) => {
@@ -426,105 +332,6 @@ export function renderTables(onTableClick) {
     });
 }
 
-
-        let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
-        let badgeColor = "bg-emerald-500";
-        let statusText = translations[state.currentLang].free;
-
-        if (tableBookings.length > 0 && timeFilter === 'all') {
-            statusColor = "bg-amber-50 border-amber-300 text-amber-900";
-            badgeColor = "bg-amber-500";
-            statusText = `${tableBookings.length} ris.`;
-        } else if (tableBookings.length > 0) {
-            statusColor = "bg-rose-50 border-rose-300 text-rose-900";
-            badgeColor = "bg-rose-500";
-            statusText = translations[state.currentLang].full;
-        }
-
-        let width = table.width ?? 90;
-        let height = table.height ?? 90;
-        const shapeClass = table.shape === 'circle' ? 'rounded-full' : 'rounded-xl';
-
-        const tableEl = document.createElement('div');
-        tableEl.className = `absolute border-2 ${statusColor} ${shapeClass} p-2 flex flex-col justify-between shadow-sm transition-colors select-none cursor-pointer hover:shadow-md z-20`;
-        tableEl.style.left = `${table.pos_x ?? 50}px`;
-        tableEl.style.top = `${table.pos_y ?? 50}px`;
-        tableEl.style.width = `${width}px`;
-        tableEl.style.height = `${height}px`;
-        tableEl.style.transform = `rotate(${table.rotation ?? 0}deg)`;
-
-        let editControlsHtml = '';
-        if (state.isEditMode) {
-            editControlsHtml = `
-                <button class="delete-table-btn absolute -top-2 -right-2 bg-rose-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] shadow-md hover:bg-rose-700 transition z-30" title="Elimina Tavolo">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-                <button class="rotate-table-btn absolute -top-2 left-1 bg-amber-500 text-white px-1.5 py-0.5 rounded text-[9px] font-bold shadow hover:bg-amber-600 z-30" title="Ruota 90°">
-                    <i class="fa-solid fa-rotate"></i> 90°
-                </button>
-                <div class="absolute -bottom-2 -right-2 w-4 h-4 bg-indigo-600 rounded-full cursor-se-resize z-40 shadow flex items-center justify-center text-white text-[8px]" title="Trascina per ridimensionare" id="resize-handle-${table.id}">
-                    <i class="fa-solid fa-expand text-[7px]"></i>
-                </div>
-            `;
-        }
-
-        let seatsControlHtml = state.isEditMode ? `
-            <div class="seats-control-box flex items-center justify-center space-x-1 my-auto bg-white/80 rounded px-1 py-0.5 z-30 shadow-xs">
-                <span class="text-[9px] font-bold text-gray-700">Posti:</span>
-                <input type="number" min="1" max="30" value="${table.seats}" class="table-seats-input w-8 text-center text-xs font-black bg-white border border-gray-300 rounded">
-            </div>
-        ` : `
-            <div class="text-center pointer-events-none my-auto">
-                <h3 class="text-sm font-black">${table.table_number}</h3>
-                <div class="text-[9px] opacity-80"><i class="fa-solid fa-user-group"></i> ${table.seats} p.</div>
-            </div>
-        `;
-
-        tableEl.innerHTML = `
-            ${editControlsHtml}
-            <div class="flex justify-between items-start pointer-events-none">
-                <span class="text-[10px] font-black opacity-70">T-${table.table_number}</span>
-                <span class="w-2 h-2 ${badgeColor} rounded-full inline-block"></span>
-            </div>
-            ${seatsControlHtml}
-            <div class="text-[9px] font-bold text-center truncate pointer-events-none opacity-90">${statusText}</div>
-        `;
-
-        if (state.isEditMode) {
-            tableEl.querySelector('.delete-table-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteTableAction(table.id);
-            });
-            tableEl.querySelector('.rotate-table-btn')?.addEventListener('click', (e) => {
-                e.stopPropagation();
-                rotateTableAction(table.id, onTableClick);
-            });
-            tableEl.querySelector('.table-seats-input')?.addEventListener('change', async (e) => {
-                e.stopPropagation();
-                await updateTableSeatsAction(table.id, e.target.value);
-            });
-            tableEl.querySelector('.table-seats-input')?.addEventListener('click', (e) => e.stopPropagation());
-        }
-
-        tableEl.addEventListener('click', () => {
-            if (!state.isEditMode && onTableClick) onTableClick(table.id);
-        });
-
-        if (state.isEditMode) {
-            tableEl.classList.add('cursor-move', 'ring-2', 'ring-indigo-400', 'ring-offset-1');
-            enableTableDrag(tableEl, table.id, width, height);
-            
-            setTimeout(() => {
-                const resizeHandle = document.getElementById(`resize-handle-${table.id}`);
-                if (resizeHandle) {
-                    enableTableResize(resizeHandle, tableEl, table.id);
-                }
-            }, 0);
-        }
-
-        canvas.appendChild(tableEl);
-    });
-
 function splitWall(roomObj, index) {
     const w = roomObj.walls[index];
     const midX = Math.round((w.x1 + w.x2) / 2);
@@ -566,7 +373,6 @@ function applyMagneticSnap(x, y, roomObj, snapThreshold = 14) {
     return { x: snappedX, y: snappedY };
 }
 
-// DRAG ENDPOINTS (Modifica lunghezza e angolo in modo fluido)
 function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj, callback) {
     let isDragging = false;
     handleEl.style.touchAction = 'none';
@@ -576,7 +382,7 @@ function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj
         isDragging = true;
         handleEl.setPointerCapture(e.pointerId);
         const ctrl = document.getElementById(`wall-ctrl-${wallIndex}`);
-        if(ctrl) ctrl.style.opacity = '0'; // Nasconde i tastini durante il drag
+        if(ctrl) ctrl.style.opacity = '0';
         e.stopPropagation();
     });
 
@@ -599,7 +405,6 @@ function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj
             wallObj.y2 = snapped.y;
         }
 
-        // Aggiorna l'HTML direttamente (zero lag)
         const dx = wallObj.x2 - wallObj.x1;
         const dy = wallObj.y2 - wallObj.y1;
         const length = Math.sqrt(dx * dx + dy * dy);
@@ -625,7 +430,6 @@ function enableWallEndpointDrag(handleEl, wallObj, pointType, wallIndex, roomObj
     });
 }
 
-// FULL DRAG (Trascina l'intero muro liberamente)
 function enableFullWallDrag(element, wallObj, wallIndex, callback) {
     let isDragging = false;
     let startX, startY;
@@ -677,7 +481,6 @@ function enableFullWallDrag(element, wallObj, wallIndex, callback) {
     });
 }
 
-// LOGICA TRASCINAMENTO TAVOLI (Rimasta inalterata)
 function enableTableDrag(element, tableId, width, height) {
     let isDragging = false;
     let startX, startY;
@@ -792,7 +595,6 @@ async function deleteTableAction(tableId) {
     document.getElementById('booking-modal').classList.add('hidden');
 }
 
-// Fallback di backup se la funzione globale dovesse mancare
 export function saveRoomsToLocal() {
     if (window.saveRoomsToLocal) {
         window.saveRoomsToLocal();
