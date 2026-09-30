@@ -24,32 +24,45 @@ async function loadData() {
         return;
     }
 
+    // Svuotiamo le stanze per evitare sovrapposizioni tra ristoranti
+    state.rooms = [];
+    state.currentRoomId = null;
+
     try {
-   const { data, error } = await state.supabaseClient
-            .from('restaurants')
-            .select('rooms_config')
-            .eq('restaurant_id', restId)
-            .single();
-            
-        if (error) {
-            console.error("Errore caricamento Supabase (rooms_config):", error.message);
-        } else if (data && data.rooms_config && data.rooms_config.length > 0) {
-            // 1. Se il database ha dei muri salvati, questa è la verità assoluta
-            state.rooms = typeof data.rooms_config === 'string' ? JSON.parse(data.rooms_config) : data.rooms_config;
-        } else {
-            // 2. Se il database è vuoto ([]), cerchiamo nel localStorage
-            const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId) || localStorage.getItem('restabook_rooms_global');
-            if (savedRooms) {
-                try {
-                    state.rooms = JSON.parse(savedRooms);
-                    // 3. Forziamo immediatamente il salvataggio sul database per riempire quel vuoto
-                    if (state.rooms.length > 0) {
-                        setTimeout(() => saveRoomsToLocal(), 500);
+        // IL FIX È QUI: Interroghiamo la tabella restaurants SOLO se non siamo nella dashboard globale
+        if (restId !== 'tutti') {
+            const { data, error } = await state.supabaseClient
+                .from('restaurants')
+                .select('rooms_config')
+                .eq('restaurant_id', restId)
+                .single();
+                
+            if (error && error.code !== 'PGRST116') {
+                console.error("Errore caricamento Supabase (rooms_config):", error.message);
+            } else if (data && data.rooms_config && data.rooms_config.length > 0) {
+                state.rooms = typeof data.rooms_config === 'string' ? JSON.parse(data.rooms_config) : data.rooms_config;
+            } else {
+                const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId);
+                if (savedRooms) {
+                    try {
+                        state.rooms = JSON.parse(savedRooms);
+                        if (state.rooms.length > 0 && typeof window.saveRoomsToLocal === 'function') {
+                            setTimeout(() => window.saveRoomsToLocal(), 500);
+                        }
+                    } catch (e) {
+                        console.error("Errore parsing stanze locali:", e);
                     }
-                } catch (e) {
-                    console.error("Errore parsing stanze locali:", e);
+                } else {
+                    state.rooms = [{ id: 'sala-principale', name: 'Sala Principale', walls: [] }];
                 }
             }
+        } else {
+            // Se siamo nella Dashboard Globale, usiamo una sala virtuale vuota senza interrogare il DB
+            state.rooms = [{ id: 'sala-globale', name: 'Vista Globale', walls: [] }];
+        }
+
+        if (state.rooms.length > 0) {
+            state.currentRoomId = state.rooms[0].id;
         }
 
         let queryTables = state.supabaseClient.from('tables').select('*');
