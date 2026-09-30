@@ -3,6 +3,16 @@ import { initAuth } from './auth.js';
 import { renderCalendar, renderDailySummary, formatDateKey } from './calendar.js';
 import { renderRooms, renderTables } from './floor.js';
 
+// ==========================================
+// FIX: FUNZIONE GLOBALE DI CONTENIMENTO (TABLET VS PC)
+// ==========================================
+window.fermaEntroIConfini = function(x, y, maxWidth = 1000, maxHeight = 800, elWidth = 50, elHeight = 50) {
+    return {
+        x: Math.max(0, Math.min(x, maxWidth - elWidth)),
+        y: Math.max(0, Math.min(y, maxHeight - elHeight))
+    };
+};
+
 document.addEventListener('DOMContentLoaded', () => {
     initAuth(async () => {
         await initRestaurantSelector(); // Carica prima la lista
@@ -19,14 +29,13 @@ async function loadData() {
     }
     
     const restId = state.currentRestaurantId || localStorage.getItem('currentRestaurantId');
-    if (!restId || restId === 'undefined') {
-        return;
-    }
+    if (!restId || restId === 'undefined') return;
 
     state.rooms = [];
     state.currentRoomId = null;
 
     try {
+        // 1. CARICAMENTO SALE E MURI
         if (restId !== 'tutti') {
             const { data, error } = await state.supabaseClient
                 .from('restaurants')
@@ -41,16 +50,12 @@ async function loadData() {
             } else {
                 const savedRooms = localStorage.getItem('restabook_rooms_' + restId) || localStorage.getItem('rooms_' + restId);
                 if (savedRooms) {
-                    try {
-                        state.rooms = JSON.parse(savedRooms);
-                    } catch (e) {}
+                    try { state.rooms = JSON.parse(savedRooms); } catch (e) {}
                 }
             }
         }
 
-        // ==========================================
-        // FIX: CONVERSIONE AUTOMATICA VECCHI MURI
-        // ==========================================
+        // Conversione vecchi muri e sanificazione coordinate (Tablet/PC fix)
         if (restId === 'tutti') {
             state.rooms = [{ id: 'sala-globale', name: 'Vista Globale', walls: [] }];
         } else if (state.rooms && state.rooms.length > 0) {
@@ -61,19 +66,26 @@ async function loadData() {
                     walls: [...state.rooms]
                 }];
                 if (typeof window.saveRoomsToLocal === 'function') setTimeout(() => window.saveRoomsToLocal(), 500);
-            } else {
-                state.rooms.forEach(r => {
-                    if (!r.walls) r.walls = [];
-                });
             }
+            
+            // Assicura che i muri non escano dallo schermo
+            state.rooms.forEach(r => {
+                if (!r.walls) r.walls = [];
+                r.walls = r.walls.map(w => ({
+                    ...w,
+                    x1: Math.max(0, Math.min(w.x1 ?? 50, 1000)),
+                    y1: Math.max(0, Math.min(w.y1 ?? 50, 800)),
+                    x2: Math.max(0, Math.min(w.x2 ?? 250, 1000)),
+                    y2: Math.max(0, Math.min(w.y2 ?? 50, 800))
+                }));
+            });
         } else {
             state.rooms = [{ id: 'sala-principale', name: 'Sala Principale', walls: [] }];
         }
 
-        if (state.rooms.length > 0) {
-            state.currentRoomId = state.rooms[0].id;
-        }
+        if (state.rooms.length > 0) state.currentRoomId = state.rooms[0].id;
 
+        // 2. OTTIMIZZAZIONE: CARICAMENTO IN PARALLELO DI TAVOLI E PRENOTAZIONI
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
 
@@ -82,26 +94,39 @@ async function loadData() {
             queryBookings = queryBookings.eq('restaurant_id', restId);
         }
 
-        const { data: tablesData, error: tablesError } = await queryTables;
+        // Esegue le query simultaneamente invece di aspettarle in sequenza
+        const [ 
+            { data: tablesData, error: tablesError }, 
+            { data: bookingsData, error: bookingsError } 
+        ] = await Promise.all([queryTables, queryBookings]);
+
         if (tablesError) throw tablesError;
-
-        state.tables = (tablesData || []).map(t => ({
-            id: t.id,
-            table_number: t.table_number,
-            seats: t.seats,
-            shape: t.shape,
-            pos_x: t.pos_x ?? 50,
-            pos_y: t.pos_y ?? 50,
-            width: t.width ?? (t.seats <= 2 ? 70 : t.seats <= 4 ? 90 : t.seats <= 8 ? 120 : 150),
-            height: t.height ?? (t.seats <= 8 ? 90 : 100),
-            rotation: t.rotation ?? 0,
-            room_id: t.room_id || 'sala-principale',
-            restaurant_id: t.restaurant_id
-        }));
-
-        const { data: bookingsData, error: bookingsError } = await queryBookings;
         if (bookingsError) throw bookingsError;
 
+        // 3. PARSING TAVOLI CON CONTROLLO CONFINI (Clamp)
+        state.tables = (tablesData || []).map(t => {
+            const width = t.width ?? (t.seats <= 2 ? 70 : t.seats <= 4 ? 90 : t.seats <= 8 ? 120 : 150);
+            const height = t.height ?? (t.seats <= 8 ? 90 : 100);
+            
+            // Controlla che il tavolo caricato non sia fuori schermo
+            const safePos = window.fermaEntroIConfini(t.pos_x ?? 50, t.pos_y ?? 50, 1000, 800, width, height);
+
+            return {
+                id: t.id,
+                table_number: t.table_number,
+                seats: t.seats,
+                shape: t.shape,
+                pos_x: safePos.x,
+                pos_y: safePos.y,
+                width: width,
+                height: height,
+                rotation: t.rotation ?? 0,
+                room_id: t.room_id || 'sala-principale',
+                restaurant_id: t.restaurant_id
+            };
+        });
+
+        // 4. PARSING PRENOTAZIONI
         state.bookings = (bookingsData || []).map(b => ({
             id: b.id,
             tableId: b.table_id,
@@ -152,13 +177,9 @@ async function initRestaurantSelector() {
     select.onchange = async (e) => {
         const selectedId = e.target.value;
         const selectedOpt = e.target.options[e.target.selectedIndex];
+        
         state.currentRestaurantId = selectedId;
-
-        if (selectedId === 'tutti') {
-            state.currentRestaurantName = "Admin Globale";
-        } else {
-            state.currentRestaurantName = selectedOpt ? selectedOpt.getAttribute('data-name') : '';
-        }
+        state.currentRestaurantName = selectedId === 'tutti' ? "Admin Globale" : (selectedOpt ? selectedOpt.getAttribute('data-name') : '');
 
         localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
         localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
@@ -191,22 +212,16 @@ function setupGlobalHeaderButtons() {
     container.innerHTML = html;
 
     const headerRight = document.querySelector('header .flex.items-center.space-x-4');
-    if (headerRight) {
-        headerRight.appendChild(container);
-    }
+    if (headerRight) headerRight.appendChild(container);
 
     const btnCreate = document.getElementById('btn-create-restaurant-header');
-    if (btnCreate) {
-        btnCreate.onclick = () => window.location.href = 'register.html';
-    }
+    if (btnCreate) btnCreate.onclick = () => window.location.href = 'register.html';
 
     const btnLogout = document.getElementById('btn-logout-header');
     if (btnLogout) {
         btnLogout.onclick = async () => {
             try {
-                if (state.supabaseClient) {
-                    await state.supabaseClient.auth.signOut();
-                }
+                if (state.supabaseClient) await state.supabaseClient.auth.signOut();
             } catch (e) {
                 console.log("Logout:", e);
             }
@@ -244,9 +259,11 @@ function setupEventListeners() {
     document.getElementById('btn-add-room').addEventListener('click', () => document.getElementById('room-config-modal').classList.remove('hidden'));
     document.getElementById('btn-add-table').addEventListener('click', () => document.getElementById('table-config-modal').classList.remove('hidden'));
 
-    document.getElementById('close-booking-modal').addEventListener('click', () => document.getElementById('booking-modal').classList.add('hidden'));
-    document.getElementById('close-table-config-modal').addEventListener('click', () => document.getElementById('table-config-modal').classList.add('hidden'));
-    document.getElementById('close-room-config-modal').addEventListener('click', () => document.getElementById('room-config-modal').classList.add('hidden'));
+    // Chiusura Modali
+    const closeModal = (id) => document.getElementById(id).classList.add('hidden');
+    document.getElementById('close-booking-modal').addEventListener('click', () => closeModal('booking-modal'));
+    document.getElementById('close-table-config-modal').addEventListener('click', () => closeModal('table-config-modal'));
+    document.getElementById('close-room-config-modal').addEventListener('click', () => closeModal('room-config-modal'));
 
     document.getElementById('booking-form').addEventListener('submit', saveBooking);
     document.getElementById('form-phone').addEventListener('input', checkClientPrivacy);
@@ -257,46 +274,36 @@ function setupEventListeners() {
 
 function setLanguage(lang) {
     state.currentLang = lang;
-    document.getElementById('btn-it').className = lang === 'it' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
-    document.getElementById('btn-de').className = lang === 'de' ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+    const isIt = lang === 'it';
+    
+    document.getElementById('btn-it').className = isIt ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
+    document.getElementById('btn-de').className = !isIt ? 'px-3 py-1 rounded-md text-sm font-medium bg-white shadow-sm' : 'px-3 py-1 rounded-md text-sm font-medium text-gray-600';
 
     const t = translations[lang];
-    document.getElementById('opt-all').innerText = t.timeFilterAll;
-    document.getElementById('opt-lunch').innerText = t.timeFilterLunch;
-    document.getElementById('opt-dinner1').innerText = t.timeFilterDinner1;
-    document.getElementById('opt-dinner2').innerText = t.timeFilterDinner2;
+    const elementsToTranslate = {
+        'opt-all': t.timeFilterAll, 'opt-lunch': t.timeFilterLunch,
+        'opt-dinner1': t.timeFilterDinner1, 'opt-dinner2': t.timeFilterDinner2,
+        'app-title': state.currentRestaurantName || t.title,
+        'calendar-title': t.calendar, 'floor-title': t.floorTitle,
+        'floor-subtitle': t.floorSubtitle, 'lbl-time-filter': t.timeFilter,
+        'legend-title': t.legendTitle, 'leg-free': t.free,
+        'leg-partial': t.partial, 'leg-full': t.full,
+        'modal-existing-title': t.existingTitle, 'modal-form-title': t.formTitle,
+        'lbl-start': t.lblStart, 'lbl-end': t.lblEnd,
+        'lbl-name': t.lblName, 'lbl-guests': t.lblGuests,
+        'lbl-phone': t.lblPhone, 'btn-save': t.btnSave,
+        'txt-add-table': t.newTable, 'txt-add-room': t.newRoom,
+        'txt-add-wall': t.addWall, 'summary-box-title': t.dailySummaryTitle,
+        'summary-box-subtitle': t.dailySummarySub, 'lbl-total-guests-label': t.totalGuestsLabel,
+        'th-time': t.thTime, 'th-table': t.thTable, 'th-name': t.thName,
+        'th-guests': t.thGuests, 'th-phone': t.thPhone, 'th-actions': t.thActions,
+        'txt-edit-mode': state.isEditMode ? t.editModeOn : t.editModeOff
+    };
 
-    document.getElementById('app-title').innerText = state.currentRestaurantName || t.title;
-    document.getElementById('calendar-title').innerText = t.calendar;
-    document.getElementById('floor-title').innerText = t.floorTitle;
-    document.getElementById('floor-subtitle').innerText = t.floorSubtitle;
-    document.getElementById('lbl-time-filter').innerText = t.timeFilter;
-    document.getElementById('legend-title').innerText = t.legendTitle;
-    document.getElementById('leg-free').innerText = t.free;
-    document.getElementById('leg-partial').innerText = t.partial;
-    document.getElementById('leg-full').innerText = t.full;
-    document.getElementById('modal-existing-title').innerText = t.existingTitle;
-    document.getElementById('modal-form-title').innerText = t.formTitle;
-    document.getElementById('lbl-start').innerText = t.lblStart;
-    document.getElementById('lbl-end').innerText = t.lblEnd;
-    document.getElementById('lbl-name').innerText = t.lblName;
-    document.getElementById('lbl-guests').innerText = t.lblGuests;
-    document.getElementById('lbl-phone').innerText = t.lblPhone;
-    document.getElementById('btn-save').innerText = t.btnSave;
-    document.getElementById('txt-add-table').innerText = t.newTable;
-    document.getElementById('txt-add-room').innerText = t.newRoom;
-    document.getElementById('txt-add-wall').innerText = t.addWall;
-    document.getElementById('summary-box-title').innerText = t.dailySummaryTitle;
-    document.getElementById('summary-box-subtitle').innerText = t.dailySummarySub;
-    document.getElementById('lbl-total-guests-label').innerText = t.totalGuestsLabel;
-    document.getElementById('th-time').innerText = t.thTime;
-    document.getElementById('th-table').innerText = t.thTable;
-    document.getElementById('th-name').innerText = t.thName;
-    document.getElementById('th-guests').innerText = t.thGuests;
-    document.getElementById('th-phone').innerText = t.thPhone;
-    document.getElementById('th-actions').innerText = t.thActions;
-
-    document.getElementById('txt-edit-mode').innerText = state.isEditMode ? t.editModeOn : t.editModeOff;
+    for (const [id, text] of Object.entries(elementsToTranslate)) {
+        const el = document.getElementById(id);
+        if (el) el.innerText = text;
+    }
 
     checkClientPrivacy();
     refreshUI();
@@ -340,15 +347,12 @@ async function saveRoomsToLocal() {
 
     if (state.supabaseClient && restId && restId !== 'tutti') {
         try {
-            const { data, error } = await state.supabaseClient
+            const { error } = await state.supabaseClient
                 .from('restaurants')
                 .update({ rooms_config: state.rooms })
-                .eq('restaurant_id', restId)
-                .select();
+                .eq('restaurant_id', restId);
 
-            if (error) {
-                console.error("Errore nel salvataggio su Supabase:", error.message);
-            }
+            if (error) console.error("Errore nel salvataggio su Supabase:", error.message);
         } catch (err) {
             console.error("Errore di rete durante il salvataggio:", err);
         }
@@ -356,11 +360,8 @@ async function saveRoomsToLocal() {
 }
 
 async function addCustomWall() {
-    let room = state.rooms.find(r => r.id === state.currentRoomId);
-    if (!room) {
-        room = state.rooms[0];
-        if (room) state.currentRoomId = room.id;
-    }
+    let room = state.rooms.find(r => r.id === state.currentRoomId) || state.rooms[0];
+    if (room) state.currentRoomId = room.id;
     
     if (room) {
         if (!room.walls) room.walls = [];
@@ -425,6 +426,7 @@ function openTableModal(tableId) {
 async function saveBooking(e) {
     e.preventDefault();
     if (!state.supabaseClient) return;
+    
     const tableId = document.getElementById('form-table-id').value;
     const startTime = document.getElementById('form-start-time').value;
     const endTime = document.getElementById('form-end-time').value;
@@ -552,5 +554,5 @@ function checkClientPrivacy() {
     }
 }
 
-// Rendi globale la funzione di salvataggio
+// Rendi globale la funzione di salvataggio per farla usare anche a floor.js
 window.saveRoomsToLocal = saveRoomsToLocal;
