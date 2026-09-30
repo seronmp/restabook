@@ -426,14 +426,6 @@ export function renderTables(onTableClick) {
     });
 }
 
-    const roomTables = state.tables.filter(t => (t.room_id || 'sala-principale') === state.currentRoomId);
-    roomTables.forEach(table => {
-        let tableBookings = state.bookings.filter(b => b.tableId === table.id && b.date === currentDateStr);
-
-        if (timeFilter !== 'all') {
-            const [fStart, fEnd] = timeFilter.split('-');
-            tableBookings = tableBookings.filter(b => b.startTime < fEnd && b.endTime > fStart);
-        }
 
         let statusColor = "bg-emerald-50 border-emerald-300 text-emerald-900";
         let badgeColor = "bg-emerald-500";
