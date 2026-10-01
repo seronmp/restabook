@@ -10,8 +10,14 @@ export function renderRooms(onRoomChange) {
         return; 
     }
 
-    state.rooms.forEach(room => {
+    state.rooms.forEach((room, index) => {
         const isActive = room.id === state.currentRoomId;
+        
+        // Creiamo un contenitore per il bottone della sala e le icone di modifica
+        const btnWrapper = document.createElement('div');
+        btnWrapper.className = "flex items-center space-x-1";
+
+        // Bottone principale della sala
         const btn = document.createElement('button');
         btn.className = `px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${isActive ? 'bg-indigo-600 text-white shadow-indigo-100' : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'}`;
         btn.innerText = room.name;
@@ -20,7 +26,49 @@ export function renderRooms(onRoomChange) {
             renderRooms(onRoomChange);
             if (onRoomChange) onRoomChange();
         };
-        container.appendChild(btn);
+        btnWrapper.appendChild(btn);
+
+        // Se la Modalità Modifica è attiva, mostriamo i tasti Rinomina ed Elimina
+        if (state.isEditMode) {
+            // Tasto Rinomina
+            const editBtn = document.createElement('button');
+            editBtn.className = "p-1.5 text-gray-400 hover:text-indigo-600 transition";
+            editBtn.innerHTML = '<i class="fa-solid fa-pen text-[10px]"></i>';
+            editBtn.title = "Rinomina sala";
+            editBtn.onclick = (e) => {
+                e.stopPropagation(); // Evita di cliccare la sala per sbaglio
+                const newName = prompt("Inserisci il nuovo nome per la sala:", room.name);
+                if (newName && newName.trim() !== "") {
+                    room.name = newName.trim();
+                    if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+                    renderRooms(onRoomChange); // Ricarica le schede
+                }
+            };
+            btnWrapper.appendChild(editBtn);
+
+            // Tasto Elimina (lo mostriamo solo se c'è più di una sala, per non rimanere senza)
+            if (state.rooms.length > 1) {
+                const delBtn = document.createElement('button');
+                delBtn.className = "p-1.5 text-gray-400 hover:text-rose-600 transition";
+                delBtn.innerHTML = '<i class="fa-solid fa-trash text-[10px]"></i>';
+                delBtn.title = "Elimina sala";
+                delBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    if (confirm(`Sei sicuro di voler eliminare la sala "${room.name}"? I tavoli al suo interno non verranno eliminati ma non saranno visibili finché non li riassegni.`)) {
+                        state.rooms.splice(index, 1);
+                        // Se stiamo eliminando la sala in cui ci troviamo, passiamo alla prima disponibile
+                        if (isActive) state.currentRoomId = state.rooms[0].id;
+                        
+                        if (window.saveRoomsToLocal) window.saveRoomsToLocal();
+                        renderRooms(onRoomChange);
+                        if (onRoomChange) onRoomChange(); // Ricarica i tavoli
+                    }
+                };
+                btnWrapper.appendChild(delBtn);
+            }
+        }
+
+        container.appendChild(btnWrapper);
     });
 }
 
