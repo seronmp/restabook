@@ -140,8 +140,9 @@
                     <div class="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl flex items-center space-x-2">
                         <i class="fa-solid fa-users text-indigo-600"></i>
                         <div>
-                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Totale Ospiti</span>
+                            <span class="text-[10px] uppercase font-bold text-indigo-400 block" id="lbl-total-guests-label">Posti liberi / ospiti prenotati</span>
                             <span id="total-guests-count" class="text-lg font-black text-indigo-700">0</span>
+                            <span id="guest-capacity-caption" class="text-[10px] text-indigo-500 block"></span>
                         </div>
                     </div>
                 </div>
@@ -159,6 +160,23 @@
                         </thead>
                         <tbody id="daily-summary-list" class="divide-y divide-gray-50 text-gray-700"></tbody>
                     </table>
+                </div>
+                <div id="cancelled-bookings-container" class="hidden mt-6">
+                    <h4 id="cancelled-bookings-title" class="text-sm font-bold text-gray-500 mb-2">Prenotazioni annullate</h4>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse text-xs min-w-[500px]">
+                            <thead>
+                                <tr class="border-b border-gray-100 text-gray-400 uppercase tracking-wider">
+                                    <th class="py-2 px-3 font-semibold" id="cancelled-th-time">Orario</th>
+                                    <th class="py-2 px-3 font-semibold" id="cancelled-th-table">Tavolo</th>
+                                    <th class="py-2 px-3 font-semibold" id="cancelled-th-name">Cliente</th>
+                                    <th class="py-2 px-3 font-semibold" id="cancelled-th-guests">Persone</th>
+                                    <th class="py-2 px-3 text-right font-semibold" id="cancelled-th-actions">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cancelled-bookings-list" class="divide-y divide-gray-50"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </main>

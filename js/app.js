@@ -127,16 +127,20 @@ async function loadData() {
         });
 
         // 4. PARSING PRENOTAZIONI
-        state.bookings = (bookingsData || []).map(b => ({
+        const parsedBookings = (bookingsData || []).map(b => ({
             id: b.id,
             tableId: b.table_id,
             date: b.date,
             startTime: b.start_time ? b.start_time.substring(0, 5) : '',
-            endTime: b.end_time ? b.end_time.substring(0, 8) : '',
+            endTime: b.end_time ? b.end_time.substring(0, 5) : '',
             name: b.name,
             guests: b.guests,
-            phone: b.phone
+            phone: b.phone,
+            restaurantId: b.restaurant_id,
+            status: b.status || 'confirmed'
         }));
+        state.bookings = parsedBookings.filter(booking => booking.status !== 'cancelled');
+        state.cancelledBookings = parsedBookings.filter(booking => booking.status === 'cancelled');
 
         refreshUI();
     } catch (err) {
@@ -236,7 +240,7 @@ function refreshUI() {
     renderRooms(refreshUI);
     renderCalendar(refreshUI);
     renderTables(openTableModal);
-    renderDailySummary(deleteBooking);
+    renderDailySummary(deleteBooking, moveBookingToTable, restoreBooking);
 }
 
 function setupEventListeners() {
@@ -295,6 +299,10 @@ function setLanguage(lang) {
         'txt-add-table': t.newTable, 'txt-add-room': t.newRoom,
         'txt-add-wall': t.addWall, 'summary-box-title': t.dailySummaryTitle,
         'summary-box-subtitle': t.dailySummarySub, 'lbl-total-guests-label': t.totalGuestsLabel,
+        'cancelled-bookings-title': t.cancelledBookingsTitle,
+        'cancelled-th-time': t.thTime, 'cancelled-th-table': t.thTable,
+        'cancelled-th-name': t.thName, 'cancelled-th-guests': t.thGuests,
+        'cancelled-th-actions': t.thActions,
         'th-time': t.thTime, 'th-table': t.thTable, 'th-name': t.thName,
         'th-guests': t.thGuests, 'th-phone': t.thPhone, 'th-actions': t.thActions,
         'txt-edit-mode': state.isEditMode ? t.editModeOn : t.editModeOff
@@ -392,8 +400,16 @@ function openTableModal(tableId) {
     `;
 
     document.getElementById('delete-table-modal-btn').onclick = async () => {
-        await state.supabaseClient.from('bookings').delete().eq('table_id', tableId);
-        await state.supabaseClient.from('tables').delete().eq('id', tableId);
+        const hasBookings = [...state.bookings, ...state.cancelledBookings].some(booking => booking.tableId === tableId);
+        if (hasBookings) {
+            alert(translations[state.currentLang].cannotDeleteTableBookings);
+            return;
+        }
+        const { error } = await state.supabaseClient.from('tables').delete().eq('id', tableId);
+        if (error) {
+            alert(error.message);
+            return;
+        }
         document.getElementById('booking-modal').classList.add('hidden');
         await loadData();
     };
@@ -413,7 +429,7 @@ function openTableModal(tableId) {
                     <span class="font-bold text-indigo-600">${b.startTime} - ${b.endTime}</span>
                     <span class="font-semibold ml-2">${b.name}</span> (${b.guests} pers.)
                 </div>
-                <button class="delete-b-btn text-rose-500 hover:text-rose-700 p-1"><i class="fa-solid fa-trash"></i></button>
+                <button class="delete-b-btn text-rose-500 hover:text-rose-700 p-1" title="${translations[state.currentLang].cancelBooking}"><i class="fa-solid fa-ban"></i></button>
             `;
             item.querySelector('.delete-b-btn').onclick = () => deleteBooking(b.id);
             listContainer.appendChild(item);
@@ -478,9 +494,111 @@ async function saveBooking(e) {
 
 async function deleteBooking(bookingId) {
     if (!state.supabaseClient) return;
-    await state.supabaseClient.from('bookings').delete().eq('id', bookingId);
+    const t = translations[state.currentLang];
+    const { error } = await state.supabaseClient
+        .from('bookings')
+        .update({ status: 'cancelled' })
+        .eq('id', bookingId)
+        .eq('status', 'confirmed');
+    if (error) {
+        alert(`${t.cancelBookingFailed}: ${error.message}`);
+        return false;
+    }
     await loadData();
     document.getElementById('booking-modal').classList.add('hidden');
+    return true;
+}
+
+async function restoreBooking(bookingId) {
+    if (!state.supabaseClient) return;
+
+    const booking = state.cancelledBookings.find(item => item.id === bookingId);
+    if (!booking) return;
+    const t = translations[state.currentLang];
+    const isAvailable = table => state.bookings.every(other =>
+        other.tableId !== table.id ||
+        other.date !== booking.date ||
+        !(booking.startTime < other.endTime && booking.endTime > other.startTime)
+    );
+    const candidates = state.tables
+        .filter(table =>
+            table.restaurant_id === booking.restaurantId &&
+            Number(table.seats) >= Number(booking.guests) &&
+            isAvailable(table)
+        )
+        .sort((a, b) => Number(a.seats) - Number(b.seats));
+    const targetTable = candidates.find(table => table.id === booking.tableId) || candidates[0];
+
+    if (!targetTable) {
+        alert(t.restoreNoTable);
+        return false;
+    }
+
+    const { data, error } = await state.supabaseClient
+        .from('bookings')
+        .update({ status: 'confirmed', table_id: targetTable.id })
+        .eq('id', booking.id)
+        .eq('status', 'cancelled')
+        .select('id')
+        .maybeSingle();
+    if (error) {
+        alert(error.code === '23P01'
+            ? t.restoreNoTable
+            : `${t.restoreBookingFailed}: ${error.message}`);
+        await loadData();
+        return false;
+    }
+    if (!data) {
+        await loadData();
+        return false;
+    }
+    await loadData();
+    return true;
+}
+
+async function moveBookingToTable(bookingId, newTableId) {
+    if (!state.supabaseClient) return;
+
+    const booking = state.bookings.find(b => b.id === bookingId);
+    const currentTable = state.tables.find(table => table.id === booking?.tableId);
+    const targetTable = state.tables.find(table => table.id === newTableId);
+    const restaurantId = booking?.restaurantId || currentTable?.restaurant_id;
+    const t = translations[state.currentLang];
+
+    if (!booking || !targetTable || targetTable.restaurant_id !== restaurantId) return;
+    if (Number(targetTable.seats) < Number(booking.guests)) {
+        alert(t.errCapacity + targetTable.seats + ")");
+        await refreshUI();
+        return;
+    }
+
+    const hasOverlap = state.bookings.some(other =>
+        other.id !== booking.id &&
+        other.tableId === targetTable.id &&
+        other.date === booking.date &&
+        booking.startTime < other.endTime &&
+        booking.endTime > other.startTime
+    );
+    if (hasOverlap) {
+        alert(t.errOverlap);
+        await refreshUI();
+        return;
+    }
+
+    let query = state.supabaseClient
+        .from('bookings')
+        .update({ table_id: targetTable.id })
+        .eq('id', booking.id);
+    if (restaurantId) query = query.eq('restaurant_id', restaurantId);
+
+    const { error } = await query;
+    if (error) {
+        alert(error.code === '23P01' ? t.errOverlap : `${t.moveTableFailed}: ${error.message}`);
+        await loadData();
+        return;
+    }
+
+    await loadData();
 }
 
 async function saveNewTable(e) {
