@@ -47,10 +47,10 @@ async function gestisciAccessoRiuscito(user, onSuccess) {
 
         if (profile) {
             state.currentRestaurantId = profile.restaurant_id;
-            state.currentRestaurantName = profile.restaurant_name || 'SmartTable Manager';
+            state.currentRestaurantName = profile.restaurant_name || 'Restaurantbooking';
         } else {
             state.currentRestaurantId = 'SportwellMals';
-            state.currentRestaurantName = 'SportWell Mals';
+            state.currentRestaurantName = 'Restaurantbooking';
         }
     }
 
