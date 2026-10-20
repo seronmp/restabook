@@ -158,6 +158,8 @@ export async function loadWhatsappMessages() {
     const { data, error } = await query;
     if (error) {
         console.error('WhatsApp-Nachrichten konnten nicht geladen werden:', error.message);
+        state.whatsappMessages = [];
+        renderWhatsappInbox();
         return;
     }
     state.whatsappMessages = (data || []).reverse();
@@ -192,11 +194,7 @@ export function renderWhatsappInbox() {
     const section = el('whatsapp-inbox-section');
     if (!section) return;
     const list = conversations();
-    const hasOrdering = (state.allRestaurants || []).some(restaurant =>
-        restaurant.whatsapp_ordering_enabled &&
-        (state.currentRestaurantId === 'tutti' || restaurant.restaurant_id === state.currentRestaurantId)
-    );
-    section.classList.toggle('hidden', list.length === 0 && !hasOrdering);
+    section.classList.remove('hidden');
 
     const totalUnread = list.reduce((sum, conversation) => sum + conversation.unread, 0);
     const badge = el('whatsapp-inbox-unread');
@@ -277,7 +275,13 @@ function renderChat(conversation) {
         ? `${conversation.customerName ? `${conversation.customerName} · ` : ''}${conversation.phone}` +
             (state.currentRestaurantId === 'tutti' && conversation.restaurantName ? ` · ${conversation.restaurantName}` : '')
         : 'Chat auswählen';
-    if (!conversation) return;
+    if (!conversation) {
+        const empty = document.createElement('p');
+        empty.className = 'm-auto text-sm text-gray-500';
+        empty.textContent = 'Chat auswählen, um den Verlauf zu sehen.';
+        box.append(empty);
+        return;
+    }
     renderQuickReplies();
 
     conversation.messages.forEach(message => {
@@ -348,6 +352,7 @@ export function setupWhatsappInbox() {
         el('quick-replies-modal').classList.add('hidden');
         el('quick-replies-modal').classList.remove('flex');
     });
+    renderWhatsappInbox();
     if (!state.supabaseClient) return;
     state.supabaseClient
         .channel('whatsapp-message-updates')
