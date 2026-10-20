@@ -1,1 +1,33 @@
-/* Eventuali stili personalizzati aggiuntivi */
+.booking-flow-step {
+    animation: booking-flow-highlight 16s ease-in-out infinite;
+}
+
+.booking-flow-step-2 {
+    animation-delay: 4s;
+}
+
+.booking-flow-step-3 {
+    animation-delay: 8s;
+}
+
+.booking-flow-step-4 {
+    animation-delay: 12s;
+}
+
+@keyframes booking-flow-highlight {
+    0%,
+    24% {
+        box-shadow: 0 0 0 2px rgb(129 140 248 / 75%);
+    }
+
+    25%,
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .booking-flow-step {
+        animation: none;
+    }
+}

@@ -71,8 +71,8 @@ export function renderDailySummary(onDeleteBooking, onMoveBooking, onRestoreBook
         .filter(b => b.date === currentDateStr)
         .sort((a, b) => a.startTime.localeCompare(b.startTime));
     const cancelledBookings = (state.cancelledBookings || [])
-        .filter(b => b.date === currentDateStr)
-        .sort((a, b) => a.startTime.localeCompare(b.startTime));
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
     const selectedRestaurant = state.allRestaurants?.find(
         restaurant => restaurant.restaurant_id === state.currentRestaurantId
     );
@@ -173,7 +173,12 @@ export function renderDailySummary(onDeleteBooking, onMoveBooking, onRestoreBook
         const table = state.tables.find(item => item.id === booking.tableId);
         const row = document.createElement('tr');
         row.className = 'text-gray-500';
+        const bookingDate = new Date(`${booking.date}T00:00:00`).toLocaleDateString(
+            state.currentLang === 'it' ? 'it-IT' : 'de-DE',
+            { day: '2-digit', month: '2-digit', year: 'numeric' }
+        );
         row.innerHTML = `
+            <td class="py-2 px-3">${bookingDate}</td>
             <td class="py-2 px-3">${booking.startTime} - ${booking.endTime}</td>
             <td class="py-2 px-3">${table ? `T-${table.table_number}` : '-'}</td>
             <td class="py-2 px-3">${booking.name}</td>

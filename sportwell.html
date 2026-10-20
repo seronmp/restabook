@@ -63,6 +63,20 @@
                         </tbody>
                     </table>
                 </div>
+                <h2 class="text-lg font-semibold text-gray-500 mt-8 mb-4">Prenotazioni Annullate</h2>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="border-b text-xs text-gray-500 uppercase">
+                                <th class="py-2 px-3">Orario</th>
+                                <th class="py-2 px-3">Cliente</th>
+                                <th class="py-2 px-3">Persone</th>
+                                <th class="py-2 px-3">Fonte</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cancelled-bookings-list" class="text-sm text-gray-500"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
@@ -94,6 +108,7 @@
 
         async function loadBookings() {
             const listEl = document.getElementById('bookings-list');
+            const cancelledListEl = document.getElementById('cancelled-bookings-list');
             const { data, error } = await supabaseClient
                 .from('bookings')
                 .select('*')
@@ -105,13 +120,19 @@
                 return;
             }
 
+            const activeBookings = data.filter(b => b.status !== 'cancelled');
+            const cancelledBookings = data.filter(b => b.status === 'cancelled');
             listEl.innerHTML = '';
-            if (data.length === 0) {
+            cancelledListEl.innerHTML = '';
+            if (activeBookings.length === 0) {
                 listEl.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-400">Nessuna prenotazione trovata</td></tr>`;
-                return;
             }
 
-            data.forEach(b => {
+            if (cancelledBookings.length === 0) {
+                cancelledListEl.innerHTML = `<tr><td colspan="4" class="py-4 text-center text-gray-400">Nessuna prenotazione annullata</td></tr>`;
+            }
+
+            activeBookings.forEach(b => {
                 const dateObj = new Date(b.booking_time);
                 const formattedTime = dateObj.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
                 
@@ -128,6 +149,24 @@
                     </tr>
                 `;
                 listEl.innerHTML += row;
+            });
+
+            cancelledBookings.forEach(b => {
+                const dateObj = new Date(b.booking_time);
+                const formattedTime = dateObj.toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' });
+                const badgeSource = b.source === 'whatsapp_bot'
+                    ? '<span class="bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded">WhatsApp</span>'
+                    : '<span class="bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded">Telefono/Manuale</span>';
+
+                const row = `
+                    <tr class="border-b bg-gray-50/70">
+                        <td class="py-3 px-3 font-medium">${formattedTime}</td>
+                        <td class="py-3 px-3">${b.guest_name} <br><span class="text-xs text-gray-400">${b.phone || ''}</span></td>
+                        <td class="py-3 px-3 font-bold">${b.number_of_guests} pers.</td>
+                        <td class="py-3 px-3">${badgeSource}</td>
+                    </tr>
+                `;
+                cancelledListEl.innerHTML += row;
             });
         }
 

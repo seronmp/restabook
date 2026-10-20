@@ -2,6 +2,9 @@ import { state, translations } from './config.js';
 import { initAuth } from './auth.js';
 import { renderCalendar, renderDailySummary, formatDateKey } from './calendar.js';
 import { renderRooms, renderTables } from './floor.js';
+import { loadWhatsappMessages, setupWhatsappInbox } from './whatsapp-inbox.js';
+
+let whatsappOrderCountdownTimer;
 
 // ==========================================
 // FIX: FUNZIONE GLOBALE DI CONTENIMENTO (TABLET VS PC)
@@ -18,6 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         await initRestaurantSelector(); // Carica prima la lista
         await loadData();               // Poi disegna lo schermo
         setupEventListeners();
+        setupBookingUpdates();
+        setupWhatsappInbox();
         setupGlobalHeaderButtons();
     });
 });
@@ -88,17 +93,20 @@ async function loadData() {
         // 2. OTTIMIZZAZIONE: CARICAMENTO IN PARALLELO DI TAVOLI E PRENOTAZIONI
         let queryTables = state.supabaseClient.from('tables').select('*');
         let queryBookings = state.supabaseClient.from('bookings').select('*');
+        let queryWhatsappOrders = state.supabaseClient.from('whatsapp_orders').select('*').order('created_at', { ascending: false });
 
         if (restId !== 'tutti') {
             queryTables = queryTables.eq('restaurant_id', restId);
             queryBookings = queryBookings.eq('restaurant_id', restId);
+            queryWhatsappOrders = queryWhatsappOrders.eq('restaurant_id', restId);
         }
 
         // Esegue le query simultaneamente invece di aspettarle in sequenza
         const [ 
             { data: tablesData, error: tablesError }, 
-            { data: bookingsData, error: bookingsError } 
-        ] = await Promise.all([queryTables, queryBookings]);
+            { data: bookingsData, error: bookingsError },
+            { data: whatsappOrdersData, error: whatsappOrdersError }
+        ] = await Promise.all([queryTables, queryBookings, queryWhatsappOrders]);
 
         if (tablesError) throw tablesError;
         if (bookingsError) throw bookingsError;
@@ -141,8 +149,26 @@ async function loadData() {
         }));
         state.bookings = parsedBookings.filter(booking => booking.status !== 'cancelled');
         state.cancelledBookings = parsedBookings.filter(booking => booking.status === 'cancelled');
+        const whatsappOrdersErrorElement = document.getElementById('whatsapp-orders-error');
+        if (whatsappOrdersError) {
+            console.error('WhatsApp-Bestellungen konnten nicht geladen werden:', whatsappOrdersError.message);
+            state.whatsappOrders = [];
+            if (whatsappOrdersErrorElement) {
+                whatsappOrdersErrorElement.textContent = 'WhatsApp-Bestellungen sind nicht verfügbar. Bitte Datenbankmigrationen und Berechtigungen prüfen.';
+                whatsappOrdersErrorElement.classList.remove('hidden');
+            }
+        } else {
+            state.whatsappOrders = whatsappOrdersData || [];
+            if (whatsappOrdersErrorElement) {
+                whatsappOrdersErrorElement.textContent = '';
+                whatsappOrdersErrorElement.classList.add('hidden');
+            }
+        }
 
         refreshUI();
+        renderWhatsappOrders();
+        renderOrderingSettings();
+        await loadWhatsappMessages();
     } catch (err) {
         console.error("Errore caricamento Supabase:", err.message);
     }
@@ -152,7 +178,11 @@ async function initRestaurantSelector() {
     const select = document.getElementById('restaurant-select');
     if (!select || !state.supabaseClient) return;
 
-    const { data: restaurants, error } = await state.supabaseClient.from('restaurants').select('*');
+    let restaurantsQuery = state.supabaseClient.from('restaurants').select('*');
+    if (!state.isAdmin) {
+        restaurantsQuery = restaurantsQuery.eq('restaurant_id', state.currentRestaurantId);
+    }
+    const { data: restaurants, error } = await restaurantsQuery;
     if (error) {
         console.error("Errore caricamento ristoranti:", error);
         return;
@@ -160,11 +190,15 @@ async function initRestaurantSelector() {
 
     state.allRestaurants = restaurants || [];
 
-    const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-    const isSpecificRestaurant = state.currentRestaurantId && state.currentRestaurantId !== 'tutti' && userRole !== 'admin';
-
-    if (isSpecificRestaurant) {
+    if (!state.isAdmin) {
+        const restaurant = state.allRestaurants.find(item => item.restaurant_id === state.currentRestaurantId);
+        if (restaurant?.name) {
+            state.currentRestaurantName = restaurant.name;
+            document.getElementById('app-title').textContent = restaurant.name;
+            localStorage.setItem('currentRestaurantName', restaurant.name);
+        }
         select.style.display = 'none';
+        renderOrderingSettings();
         return;
     }
 
@@ -184,12 +218,14 @@ async function initRestaurantSelector() {
         
         state.currentRestaurantId = selectedId;
         state.currentRestaurantName = selectedId === 'tutti' ? "Admin Globale" : (selectedOpt ? selectedOpt.getAttribute('data-name') : '');
+        document.getElementById('app-title').textContent = state.currentRestaurantName || translations[state.currentLang].title;
 
         localStorage.setItem('currentRestaurantId', state.currentRestaurantId);
         localStorage.setItem('currentRestaurantName', state.currentRestaurantName);
 
         await loadData();
     };
+    renderOrderingSettings();
 }
 
 function setupGlobalHeaderButtons() {
@@ -200,7 +236,7 @@ function setupGlobalHeaderButtons() {
     container.id = 'global-actions-container';
     container.className = 'flex items-center space-x-2 ml-4';
 
-    const isAdmin = state.currentRestaurantId === 'tutti' || (localStorage.getItem('userRole') === 'admin');
+    const isAdmin = state.isAdmin;
 
     let html = '';
     if (isAdmin) {
@@ -243,6 +279,40 @@ function refreshUI() {
     renderDailySummary(deleteBooking, moveBookingToTable, restoreBooking);
 }
 
+function setupBookingUpdates() {
+    if (!state.supabaseClient) return;
+
+    let refreshTimeout;
+    let orderRefreshTimeout;
+    state.supabaseClient
+        .channel('booking-status-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
+            const restId = state.currentRestaurantId;
+            const changedBooking = payload.new || payload.old;
+            if (
+                restId !== 'tutti' &&
+                changedBooking?.restaurant_id &&
+                changedBooking.restaurant_id !== restId
+            ) return;
+
+            clearTimeout(refreshTimeout);
+            refreshTimeout = setTimeout(() => loadData(), 150);
+        })
+        .subscribe(status => {
+            if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                console.error(`Booking updates subscription failed: ${status}`);
+            }
+        });
+
+    state.supabaseClient
+        .channel('whatsapp-order-updates')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'whatsapp_orders' }, () => {
+            clearTimeout(orderRefreshTimeout);
+            orderRefreshTimeout = setTimeout(() => loadData(), 200);
+        })
+        .subscribe();
+}
+
 function setupEventListeners() {
     document.getElementById('btn-it').addEventListener('click', () => setLanguage('it'));
     document.getElementById('btn-de').addEventListener('click', () => setLanguage('de'));
@@ -274,6 +344,264 @@ function setupEventListeners() {
 
     document.getElementById('table-config-form').addEventListener('submit', saveNewTable);
     document.getElementById('room-config-form').addEventListener('submit', saveNewRoom);
+
+    const orderingModal = document.getElementById('ordering-settings-modal');
+    document.getElementById('btn-ordering-settings').addEventListener('click', () => orderingModal.classList.remove('hidden'));
+    document.getElementById('close-ordering-settings').addEventListener('click', () => orderingModal.classList.add('hidden'));
+    document.getElementById('ordering-phone').addEventListener('input', updateOrderingLink);
+    document.getElementById('ordering-menu-url').addEventListener('input', updateOrderingLink);
+    document.getElementById('ordering-enabled').addEventListener('change', updateOrderingRequirements);
+    document.getElementById('ordering-settings-form').addEventListener('submit', saveOrderingSettings);
+}
+
+function renderOrderingSettings() {
+    const restaurantId = state.currentRestaurantId;
+    const button = document.getElementById('btn-ordering-settings');
+    if (!button) return;
+    button.classList.toggle('hidden', !restaurantId || restaurantId === 'tutti');
+
+    const restaurant = state.allRestaurants?.find(item => item.restaurant_id === restaurantId);
+    document.getElementById('ordering-enabled').checked = Boolean(restaurant?.whatsapp_ordering_enabled);
+    document.getElementById('table-management-enabled').checked = restaurant?.table_management_enabled !== false;
+    document.getElementById('ordering-menu-url').value = restaurant?.whatsapp_ordering_menu_url || '';
+    document.getElementById('ordering-phone').value = restaurant?.whatsapp_ordering_phone || '';
+    document.getElementById('ordering-settings-message').textContent = '';
+    updateOrderingRequirements();
+    updateOrderingLink();
+
+    const orderSection = document.getElementById('whatsapp-orders-section');
+    const isEnabled = Boolean(restaurant?.whatsapp_ordering_enabled);
+    orderSection.classList.toggle('hidden', restaurantId === 'tutti' ? state.whatsappOrders.length === 0 : !isEnabled);
+
+    const tableManagementEnabled = restaurantId === 'tutti'
+        ? (state.allRestaurants || []).some(item => item.table_management_enabled !== false)
+        : restaurant?.table_management_enabled !== false;
+    document.getElementById('table-management-main').classList.toggle('hidden', !tableManagementEnabled);
+    document.getElementById('booking-summary-section').classList.toggle('hidden', !tableManagementEnabled);
+    document.getElementById('btn-toggle-edit').classList.toggle('hidden', !tableManagementEnabled);
+}
+
+function updateOrderingRequirements() {
+    const isEnabled = document.getElementById('ordering-enabled').checked;
+    document.getElementById('ordering-menu-url').required = isEnabled;
+    document.getElementById('ordering-phone').required = isEnabled;
+}
+
+function updateOrderingLink() {
+    const phone = document.getElementById('ordering-phone').value.replace(/\D/g, '');
+    const menuUrl = document.getElementById('ordering-menu-url').value.trim();
+    const message = `ORDER\nMenu: ${menuUrl}\nItems: `;
+    document.getElementById('ordering-link').value = phone && menuUrl
+        ? `https://wa.me/${phone}?text=${encodeURIComponent(message)}`
+        : '';
+}
+
+async function saveOrderingSettings(event) {
+    event.preventDefault();
+    const message = document.getElementById('ordering-settings-message');
+    const restaurantId = state.currentRestaurantId;
+    if (!restaurantId || restaurantId === 'tutti') return;
+
+    const updates = {
+        whatsapp_ordering_enabled: document.getElementById('ordering-enabled').checked,
+        table_management_enabled: document.getElementById('table-management-enabled').checked,
+        whatsapp_ordering_menu_url: document.getElementById('ordering-menu-url').value.trim() || null,
+        whatsapp_ordering_phone: document.getElementById('ordering-phone').value.trim() || null
+    };
+    const { data: updatedRows, error } = await state.supabaseClient
+        .from('restaurants')
+        .update(updates)
+        .eq('restaurant_id', restaurantId)
+        .select('restaurant_id');
+    if (error) {
+        message.textContent = `Speichern fehlgeschlagen: ${error.message}`;
+        message.className = 'text-sm text-rose-700';
+        return;
+    }
+    if (!updatedRows?.length) {
+        message.textContent = 'Keine Restaurantzeile aktualisiert. Prüfe Restaurant-Zuordnung und Supabase-Berechtigungen.';
+        message.className = 'text-sm text-rose-700';
+        return;
+    }
+
+    const restaurant = state.allRestaurants.find(item => item.restaurant_id === restaurantId);
+    if (restaurant) Object.assign(restaurant, updates);
+    const status = document.getElementById('ordering-settings-status');
+    status.textContent = 'WhatsApp-Einstellungen gespeichert.';
+    status.classList.remove('hidden');
+    window.setTimeout(() => {
+        status.classList.add('hidden');
+        status.textContent = '';
+    }, 4000);
+    document.getElementById('ordering-settings-modal').classList.add('hidden');
+    renderOrderingSettings();
+}
+
+function formatPickupCountdown(milliseconds) {
+    const totalSeconds = Math.max(0, Math.ceil(milliseconds / 1000));
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    const minutes = String(Math.floor(totalSeconds / 60) % 60).padStart(2, '0');
+    const hours = Math.floor(totalSeconds / 3600);
+    return hours > 0
+        ? `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`
+        : `${String(Math.floor(totalSeconds / 60)).padStart(2, '0')}:${seconds}`;
+}
+
+function pickupStatus(order, now = Date.now()) {
+    if (order.picked_up_at) return { label: 'Abgeholt', style: 'bg-slate-100 text-slate-700' };
+    if (order.ready_at) {
+        const remaining = new Date(order.ready_at).getTime() - now;
+        if (remaining > 0) {
+            return { label: `Abholbereit in ${formatPickupCountdown(remaining)}`, style: 'bg-amber-100 text-amber-800' };
+        }
+        return { label: 'Abholbereit', style: 'bg-emerald-100 text-emerald-800' };
+    }
+    if (order.status === 'rejected') return { label: 'Abgelehnt', style: 'bg-rose-100 text-rose-700' };
+    if (order.status === 'accepted') return { label: 'Angenommen', style: 'bg-sky-100 text-sky-800' };
+    return { label: 'Neu', style: 'bg-amber-100 text-amber-800' };
+}
+
+async function setWhatsappOrderPickedUp(order, pickedUp, button) {
+    const errorElement = document.getElementById('whatsapp-orders-error');
+    errorElement.classList.add('hidden');
+    button.disabled = true;
+    try {
+        const updatePickupStatus = () => {
+            let query = state.supabaseClient
+                .from('whatsapp_orders')
+                .update({ picked_up_at: pickedUp ? new Date().toISOString() : null })
+                .eq('message_sid', order.message_sid)
+                .eq('restaurant_id', order.restaurant_id);
+            query = order.picked_up_at
+                ? query.eq('picked_up_at', order.picked_up_at)
+                : query.is('picked_up_at', null);
+            return query.select('message_sid, picked_up_at').maybeSingle();
+        };
+
+        let result = await updatePickupStatus();
+        if (result.error?.code === 'PGRST301') {
+            const { data: sessionData, error: refreshError } = await state.supabaseClient.auth.refreshSession();
+            if (refreshError || !sessionData.session) {
+                if (refreshError) console.error('Supabase-Anmeldung konnte nicht aktualisiert werden:', refreshError);
+                errorElement.textContent = 'Deine Anmeldung ist abgelaufen. Bitte melde dich erneut an und versuche es noch einmal.';
+                errorElement.classList.remove('hidden');
+                return;
+            }
+            result = await updatePickupStatus();
+        }
+
+        const { data, error } = result;
+        if (error || !data) {
+            console.error('WhatsApp-Bestellstatus konnte nicht aktualisiert werden:', error);
+            errorElement.textContent = error?.code === 'PGRST301'
+                ? 'Supabase hat die Anmeldung auch nach dem Aktualisieren zurückgewiesen. Bitte melde dich erneut an.'
+                : error?.message || 'Der Abholstatus wurde zwischenzeitlich geändert. Bitte aktualisiere die Ansicht.';
+            errorElement.classList.remove('hidden');
+            return;
+        }
+        Object.assign(order, data);
+        renderWhatsappOrders();
+    } catch (error) {
+        console.error('WhatsApp-Bestellstatus konnte nicht aktualisiert werden:', error);
+        errorElement.textContent = 'Der Abholstatus konnte wegen eines Netzwerkfehlers nicht aktualisiert werden.';
+        errorElement.classList.remove('hidden');
+    } finally {
+        button.disabled = false;
+    }
+}
+
+function tickWhatsappOrderCountdowns() {
+    document.querySelectorAll('#whatsapp-orders-list [data-ready-at]').forEach(badge => {
+        const remaining = new Date(badge.dataset.readyAt).getTime() - Date.now();
+        if (remaining > 0) {
+            badge.textContent = `Abholbereit in ${formatPickupCountdown(remaining)}`;
+            return;
+        }
+        badge.textContent = 'Abholbereit';
+        badge.className = 'inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold bg-emerald-100 text-emerald-800';
+        delete badge.dataset.readyAt;
+    });
+}
+
+function renderWhatsappOrders() {
+    const list = document.getElementById('whatsapp-orders-list');
+    if (!list) return;
+    if (!whatsappOrderCountdownTimer) {
+        whatsappOrderCountdownTimer = window.setInterval(tickWhatsappOrderCountdowns, 1000);
+    }
+    list.replaceChildren();
+    const orders = state.whatsappOrders || [];
+    const activeOrders = orders.filter(order => !order.picked_up_at);
+    const completedOrders = orders.filter(order => order.picked_up_at);
+    const openOrders = activeOrders.filter(order => order.status !== 'rejected').length;
+    document.getElementById('whatsapp-orders-count').textContent = `${openOrders} offen`;
+
+    if (activeOrders.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'py-3 text-sm text-gray-500';
+        empty.textContent = orders.length === 0 ? 'Noch keine Bestellanfragen.' : 'Keine offenen Bestellungen.';
+        list.append(empty);
+    }
+
+    activeOrders.forEach(order => renderWhatsappOrder(order, list));
+
+    const completedSection = document.getElementById('whatsapp-orders-completed');
+    const completedSummary = document.getElementById('whatsapp-orders-completed-summary');
+    const completedList = document.getElementById('whatsapp-orders-completed-list');
+    completedSection.classList.toggle('hidden', completedOrders.length === 0);
+    completedSummary.textContent = `Abgeholte Bestellungen (${completedOrders.length})`;
+    completedList.replaceChildren();
+    completedOrders.forEach(order => renderWhatsappOrder(order, completedList));
+}
+
+function renderWhatsappOrder(order, list) {
+    const row = document.createElement('article');
+    row.className = 'py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3';
+    const details = document.createElement('div');
+    details.className = 'min-w-0 flex-1';
+    const customerPhone = String(order.customer_phone || '');
+    const phoneDigits = customerPhone.replace(/\D/g, '');
+    const phone = document.createElement(phoneDigits ? 'a' : 'p');
+    phone.className = 'mt-0.5 block text-xs text-gray-500 hover:text-emerald-700';
+    phone.textContent = customerPhone;
+    if (phoneDigits) {
+        phone.href = `https://wa.me/${phoneDigits}`;
+        phone.target = '_blank';
+        phone.rel = 'noopener noreferrer';
+        phone.setAttribute('aria-label', `WhatsApp-Chat mit ${order.customer_name || customerPhone} öffnen`);
+    }
+    const name = document.createElement('p');
+    name.className = 'text-sm font-semibold text-gray-800';
+    name.textContent = order.customer_name || 'Name nicht verfügbar';
+    const text = document.createElement('p');
+    text.className = 'mt-1 text-sm text-gray-700 whitespace-pre-wrap';
+    text.textContent = order.order_text;
+    details.append(name, phone, text);
+    const status = pickupStatus(order);
+    const statusBadge = document.createElement('span');
+    statusBadge.className = `inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${status.style}`;
+    statusBadge.textContent = status.label;
+    if (!order.picked_up_at && order.status !== 'rejected' && order.ready_at && new Date(order.ready_at).getTime() > Date.now()) {
+        statusBadge.dataset.readyAt = order.ready_at;
+    }
+    const actions = document.createElement('div');
+    actions.className = 'flex shrink-0 flex-col items-start gap-2 sm:items-end';
+    actions.append(statusBadge);
+    const created = document.createElement('time');
+    created.className = 'text-xs text-gray-500 shrink-0';
+    created.dateTime = order.created_at;
+    created.textContent = new Date(order.created_at).toLocaleString(state.currentLang === 'de' ? 'de-DE' : 'it-IT');
+    actions.append(created);
+    if (order.status !== 'rejected') {
+        const pickupToggle = document.createElement('button');
+        pickupToggle.type = 'button';
+        pickupToggle.className = 'rounded-md border border-gray-300 px-3 py-2 text-xs font-semibold text-gray-700 hover:border-emerald-500 hover:text-emerald-700 disabled:cursor-wait disabled:opacity-50';
+        pickupToggle.textContent = order.picked_up_at ? 'Als nicht abgeholt markieren' : 'Als abgeholt markieren';
+        pickupToggle.addEventListener('click', () => setWhatsappOrderPickedUp(order, !order.picked_up_at, pickupToggle));
+        actions.append(pickupToggle);
+    }
+    row.append(details, actions);
+    list.append(row);
 }
 
 function setLanguage(lang) {
@@ -300,6 +628,7 @@ function setLanguage(lang) {
         'txt-add-wall': t.addWall, 'summary-box-title': t.dailySummaryTitle,
         'summary-box-subtitle': t.dailySummarySub, 'lbl-total-guests-label': t.totalGuestsLabel,
         'cancelled-bookings-title': t.cancelledBookingsTitle,
+        'cancelled-th-date': t.thDate,
         'cancelled-th-time': t.thTime, 'cancelled-th-table': t.thTable,
         'cancelled-th-name': t.thName, 'cancelled-th-guests': t.thGuests,
         'cancelled-th-actions': t.thActions,
@@ -442,54 +771,65 @@ function openTableModal(tableId) {
 async function saveBooking(e) {
     e.preventDefault();
     if (!state.supabaseClient) return;
-    
-    const tableId = document.getElementById('form-table-id').value;
-    const startTime = document.getElementById('form-start-time').value;
-    const endTime = document.getElementById('form-end-time').value;
-    const name = document.getElementById('form-name').value;
-    const guests = parseInt(document.getElementById('form-guests').value, 10);
-    const phone = document.getElementById('form-phone').value;
-    const dateStr = formatDateKey(state.currentDate);
 
-    const table = state.tables.find(t => t.id === tableId);
-    const t = translations[state.currentLang];
+    const form = document.getElementById('booking-form');
+    const submitButton = form.querySelector('[type="submit"]');
+    if (form.dataset.saving === 'true') return;
+    form.dataset.saving = 'true';
+    submitButton.disabled = true;
 
-    if (!table) return;
+    try {
+        const tableId = document.getElementById('form-table-id').value;
+        const startTime = document.getElementById('form-start-time').value;
+        const endTime = document.getElementById('form-end-time').value;
+        const name = document.getElementById('form-name').value;
+        const guests = parseInt(document.getElementById('form-guests').value, 10);
+        const phone = document.getElementById('form-phone').value;
+        const dateStr = formatDateKey(state.currentDate);
 
-    if (guests > table.seats) {
-        alert(t.errCapacity + table.seats + ")");
-        return;
+        const table = state.tables.find(t => t.id === tableId);
+        const t = translations[state.currentLang];
+
+        if (!table) return;
+
+        if (guests > table.seats) {
+            alert(t.errCapacity + table.seats + ")");
+            return;
+        }
+
+        const existingTableBookings = state.bookings.filter(b => b.tableId === tableId && b.date === dateStr);
+        const hasOverlap = existingTableBookings.some(b => startTime < b.endTime && endTime > b.startTime);
+
+        if (hasOverlap) {
+            alert(t.errOverlap);
+            return;
+        }
+
+        const { error } = await state.supabaseClient
+            .from('bookings')
+            .insert([{
+                table_id: tableId,
+                date: dateStr,
+                start_time: startTime,
+                end_time: endTime,
+                name: name,
+                guests: guests,
+                phone: phone,
+                restaurant_id: state.currentRestaurantId
+            }]);
+
+        if (error) {
+            alert("Errore salvataggio: " + error.message);
+            return;
+        }
+
+        await loadData();
+        document.getElementById('booking-modal').classList.add('hidden');
+        form.reset();
+    } finally {
+        form.dataset.saving = 'false';
+        submitButton.disabled = false;
     }
-
-    const existingTableBookings = state.bookings.filter(b => b.tableId === tableId && b.date === dateStr);
-    const hasOverlap = existingTableBookings.some(b => startTime < b.endTime && endTime > b.startTime);
-
-    if (hasOverlap) {
-        alert(t.errOverlap);
-        return;
-    }
-
-    const { error } = await state.supabaseClient
-        .from('bookings')
-        .insert([{
-            table_id: tableId,
-            date: dateStr,
-            start_time: startTime,
-            end_time: endTime,
-            name: name,
-            guests: guests,
-            phone: phone,
-            restaurant_id: state.currentRestaurantId
-        }]);
-
-    if (error) {
-        alert("Errore salvataggio: " + error.message);
-        return;
-    }
-
-    await loadData();
-    document.getElementById('booking-modal').classList.add('hidden');
-    document.getElementById('booking-form').reset();
 }
 
 async function deleteBooking(bookingId) {

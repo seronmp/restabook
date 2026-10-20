@@ -32,28 +32,32 @@ export async function initAuth(onSuccess) {
 }
 
 async function gestisciAccessoRiuscito(user, onSuccess) {
-    document.getElementById('login-container').style.display = 'none';
-    document.getElementById('app-container').style.display = 'block';
-
-    if (user.email === 'admin@admin.com') {
+    state.isAdmin = user.email === 'admin@admin.com';
+    if (state.isAdmin) {
         state.currentRestaurantId = 'tutti';
         state.currentRestaurantName = 'Admin Globale';
     } else {
-        const { data: profile } = await state.supabaseClient
+        const { data: profile, error } = await state.supabaseClient
             .from('profiles')
             .select('restaurant_id, restaurant_name')
             .eq('id', user.id)
             .single();
 
-        if (profile) {
-            state.currentRestaurantId = profile.restaurant_id;
-            state.currentRestaurantName = profile.restaurant_name || 'Restaurantbooking';
-        } else {
-            state.currentRestaurantId = 'SportwellMals';
-            state.currentRestaurantName = 'Restaurantbooking';
+        const restaurantId = profile?.restaurant_id;
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(restaurantId || ''));
+        if (error || !profile || !isUuid) {
+            state.currentRestaurantId = null;
+            state.currentRestaurantName = '';
+            alert('Für dieses Konto ist kein gültiges Restaurantprofil hinterlegt. Bitte die Restaurant-Zuordnung in Supabase korrigieren lassen.');
+            return;
         }
+
+        state.currentRestaurantId = restaurantId;
+        state.currentRestaurantName = profile.restaurant_name || '';
     }
 
+    document.getElementById('login-container').style.display = 'none';
+    document.getElementById('app-container').style.display = 'block';
     document.getElementById('app-title').innerText = state.currentRestaurantName;
     if (onSuccess) onSuccess();
 }

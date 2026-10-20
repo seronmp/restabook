@@ -657,8 +657,16 @@ async function updateTableSeatsAction(tableId, newSeats) {
 async function deleteTableAction(tableId) {
     if (!state.supabaseClient) return;
     if (!confirm("Vuoi davvero eliminare questo tavolo?")) return;
-    await state.supabaseClient.from('bookings').delete().eq('table_id', tableId);
-    await state.supabaseClient.from('tables').delete().eq('id', tableId);
+    const hasBookings = [...state.bookings, ...state.cancelledBookings].some(booking => booking.tableId === tableId);
+    if (hasBookings) {
+        alert(translations[state.currentLang].cannotDeleteTableBookings);
+        return;
+    }
+    const { error } = await state.supabaseClient.from('tables').delete().eq('id', tableId);
+    if (error) {
+        alert(error.message);
+        return;
+    }
     document.getElementById('booking-modal').classList.add('hidden');
 }
 
